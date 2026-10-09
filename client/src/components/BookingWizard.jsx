@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   Sparkles,
-  Calendar as CalendarIcon,
-  Clock,
-  User,
-  Mail,
-  Phone,
-  BookOpen,
-  Globe,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -15,12 +8,17 @@ import {
   Sun,
   Sunset,
   Moon,
-  ChevronRight,
   Code,
   Bot,
   Cpu,
   Globe2,
   Brain,
+  Globe,
+  User,
+  Mail,
+  Phone,
+  Clock,
+  Calendar,
 } from 'lucide-react';
 import { POPULAR_TIMEZONES, ALL_IANA_TIMEZONES } from '../utils/timezonesList.js';
 
@@ -45,7 +43,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
   const [parentTimezone, setParentTimezone] = useState(defaultTz);
 
   // Date selection state: next 14 days
-  const upcomingDays = (() => {
+  const [upcomingDays] = useState(() => {
     const days = [];
     const today = new Date();
     for (let i = 0; i < 14; i++) {
@@ -58,12 +56,13 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
       days.push({ iso, dayName, monthName, dayNum });
     }
     return days;
-  })();
+  });
 
   const [selectedDate, setSelectedDate] = useState(upcomingDays[0]?.iso || '');
   const [slots, setSlots] = useState([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState(null);
+  const [activeSlotTimeFilter, setActiveSlotTimeFilter] = useState('all'); // 'all' | 'morning' | 'afternoon' | 'evening'
 
   // Parent form state
   const [parentName, setParentName] = useState('');
@@ -168,7 +167,6 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
           result.message ||
             'Unable to complete booking. The slot might have just been reserved by another parent. Please choose another slot.'
         );
-        // Refresh slots so they see latest availability
         fetch(`/api/slots?date=${selectedDate}&timezone=${encodeURIComponent(parentTimezone)}`)
           .then((r) => r.json())
           .then((d) => d.success && setSlots(d.data));
@@ -176,7 +174,6 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
         return;
       }
 
-      // Booking succeeded!
       onBookingSuccess(result.data);
     } catch (err) {
       console.error('Booking submission error:', err);
@@ -186,16 +183,31 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
   };
 
   const subjectOptions = [
-    { title: 'Scratch & Game Development', icon: Code, desc: 'Ages 5-9 • Interactive stories, drag-and-drop games', color: '#FFF1ED', iconColor: '#E0522D' },
-    { title: 'Python Programming', icon: Cpu, desc: 'Ages 9-14 • Syntax, games, computational thinking', color: '#FFF8E7', iconColor: '#D97706' },
-    { title: 'Robotics & Micro:bit', icon: Bot, desc: 'Ages 8-15 • Circuits, sensors, automated logic', color: '#E8F8EE', iconColor: '#10B981' },
-    { title: 'Web Development', icon: Globe2, desc: 'Ages 10-17 • HTML, CSS, JavaScript, live web pages', color: '#F3E8FF', iconColor: '#7C3AED' },
-    { title: 'AI & Machine Learning', icon: Brain, desc: 'Ages 12-18 • Computer vision, neural nets, chatbots', color: '#E0F2FE', iconColor: '#0284C7' },
+    { title: 'Scratch & Game Development', icon: Code, desc: 'Ages 5-9 • Interactive stories, drag-and-drop games', color: '#FFE4E6', iconColor: '#BE123C' },
+    { title: 'Python Programming', icon: Cpu, desc: 'Ages 9-14 • Syntax, games, computational thinking', color: '#FEF3C7', iconColor: '#B45309' },
+    { title: 'Robotics & Micro:bit', icon: Bot, desc: 'Ages 8-15 • Circuits, sensors, automated logic', color: '#CCFBF1', iconColor: '#0F766E' },
+    { title: 'Web Development', icon: Globe2, desc: 'Ages 10-17 • HTML, CSS, JavaScript, live web pages', color: '#EDE9FE', iconColor: '#6D28D9' },
+    { title: 'AI & Machine Learning', icon: Brain, desc: 'Ages 12-18 • Computer vision, neural nets, chatbots', color: '#DBEAFE', iconColor: '#1D4ED8' },
   ];
+
+  const quickTimezones = [
+    { label: '🇺🇸 US Eastern (EDT)', value: 'America/New_York' },
+    { label: '🇺🇸 US Pacific (PDT)', value: 'America/Los_Angeles' },
+    { label: '🇬🇧 London (BST)', value: 'Europe/London' },
+    { label: '🇮🇳 India (IST)', value: 'Asia/Kolkata' },
+    { label: '🇦🇺 Sydney (AEST)', value: 'Australia/Sydney' },
+    { label: '🇸🇬 Singapore (SGT)', value: 'Asia/Singapore' },
+  ];
+
+  const getAgeCohort = (age) => {
+    if (age <= 8) return 'Junior STEM Explorer (Ages 5-8)';
+    if (age <= 13) return 'Logic & Coding Innovator (Ages 9-13)';
+    return 'Advanced Developer Track (Ages 14-17)';
+  };
 
   return (
     <div id="booking-wizard-section" className="wizard-container">
-      {/* Stepper Header */}
+      {/* 21st.dev Stepper Header */}
       <div className="stepper-header">
         <div className="stepper-line">
           <div
@@ -204,19 +216,28 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
           />
         </div>
 
-        <div className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`} onClick={() => step > 1 && setStep(1)}>
+        <div
+          className={`stepper-step ${step >= 1 ? 'active' : ''} ${step > 1 ? 'completed' : ''}`}
+          onClick={() => step > 1 && setStep(1)}
+        >
           <div className="step-circle">{step > 1 ? '✓' : '1'}</div>
-          <span className="step-title">Child & Course</span>
+          <span className="step-title">Child & Subject</span>
         </div>
 
-        <div className={`stepper-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`} onClick={() => step > 2 && setStep(2)}>
+        <div
+          className={`stepper-step ${step >= 2 ? 'active' : ''} ${step > 2 ? 'completed' : ''}`}
+          onClick={() => step > 2 && setStep(2)}
+        >
           <div className="step-circle">{step > 2 ? '✓' : '2'}</div>
           <span className="step-title">Date & Timezone</span>
         </div>
 
-        <div className={`stepper-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`} onClick={() => step > 3 && setStep(3)}>
+        <div
+          className={`stepper-step ${step >= 3 ? 'active' : ''} ${step > 3 ? 'completed' : ''}`}
+          onClick={() => step > 3 && setStep(3)}
+        >
           <div className="step-circle">{step > 3 ? '✓' : '3'}</div>
-          <span className="step-title">Select Slot</span>
+          <span className="step-title">Pick 30-Min Slot</span>
         </div>
 
         <div className={`stepper-step ${step >= 4 ? 'active' : ''}`}>
@@ -229,16 +250,22 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
       {step === 1 && (
         <div className="step-card">
           <div className="step-card-header">
-            <span className="badge badge-golden" style={{ marginBottom: '8px' }}>Step 1 of 4</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span className="badge badge-golden">Step 1 of 4 • Student Profiling</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>25% Complete</span>
+            </div>
             <h2 className="step-card-title">Who is this trial class for?</h2>
             <p className="step-card-desc">
               We personalize the learning session to your child's age, grade, and coding background.
             </p>
           </div>
 
-          <div className="form-row" style={{ marginBottom: '24px' }}>
+          <div className="form-row" style={{ marginBottom: '28px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Child's First Name *</label>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={15} color="var(--primary)" />
+                <span>Child's First Name *</span>
+              </label>
               <input
                 type="text"
                 className="form-input"
@@ -250,8 +277,15 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Child's Age: <strong>{childAge} years old</strong></label>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', paddingTop: '10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label className="form-label">
+                  Child's Age: <strong>{childAge} years old</strong>
+                </label>
+                <span className="badge badge-teal" style={{ fontSize: '11px' }}>
+                  {getAgeCohort(childAge)}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', paddingTop: '8px' }}>
                 <input
                   type="range"
                   min="5"
@@ -265,11 +299,12 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                     padding: '6px 14px',
                     borderRadius: 'var(--radius-pill)',
                     background: 'var(--primary-light)',
-                    fontWeight: 800,
+                    fontWeight: 900,
                     fontSize: '15px',
                     color: '#B45309',
                     minWidth: '50px',
                     textAlign: 'center',
+                    border: '1px solid #FDE68A',
                   }}
                 >
                   {childAge}
@@ -278,8 +313,8 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
+          <div style={{ marginBottom: '24px' }}>
+            <label className="form-label" style={{ display: 'block', marginBottom: '14px' }}>
               Select Trial Subject *
             </label>
             <div className="subject-grid">
@@ -306,12 +341,12 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
           </div>
 
           {errorMessage && (
-            <div style={{ color: '#DC2626', fontSize: '14px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ color: '#DC2626', fontSize: '14px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '6px', background: '#FEF2F2', padding: '10px 14px', borderRadius: 'var(--radius-md)' }}>
               <AlertCircle size={16} /> {errorMessage}
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
             <button
               onClick={() => {
                 if (!childName.trim()) {
@@ -321,7 +356,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                 setErrorMessage('');
                 setStep(2);
               }}
-              className="btn btn-primary btn-lg"
+              className="btn btn-primary btn-lg btn-shimmer"
             >
               <span>Continue to Schedule</span>
               <ArrowRight size={18} />
@@ -334,29 +369,57 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
       {step === 2 && (
         <div className="step-card">
           <div className="step-card-header">
-            <span className="badge badge-golden" style={{ marginBottom: '8px' }}>Step 2 of 4</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span className="badge badge-golden">Step 2 of 4 • Timezone Sync</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>50% Complete</span>
+            </div>
             <h2 className="step-card-title">Choose date & your local timezone</h2>
             <p className="step-card-desc">
               All slots are calculated live to ensure seamless mentor availability with zero timezone math for you.
             </p>
           </div>
 
-          {/* Timezone Selector */}
+          {/* Timezone Selector Box */}
           <div
             style={{
-              background: '#FFFDF7',
-              border: '1.5px solid #F6E2B3',
+              background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF8 100%)',
+              border: '1.5px solid #FDE68A',
               borderRadius: 'var(--radius-lg)',
-              padding: '20px',
+              padding: '24px',
               marginBottom: '32px',
+              boxShadow: 'var(--shadow-sm)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Globe size={18} color="var(--primary)" />
-                <span style={{ fontWeight: 700, fontSize: '15px' }}>Your Local Timezone</span>
+                <span style={{ fontWeight: 800, fontSize: '15px' }}>Your Local Timezone</span>
               </div>
               <span className="badge badge-teal">Auto-Detected</span>
+            </div>
+
+            {/* Quick Timezone Select Chips */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+              {quickTimezones.map((q) => (
+                <button
+                  key={q.value}
+                  type="button"
+                  onClick={() => setParentTimezone(q.value)}
+                  style={{
+                    padding: '6px 12px',
+                    borderRadius: 'var(--radius-pill)',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    border: parentTimezone === q.value ? '1.5px solid var(--primary)' : '1px solid var(--border-subtle)',
+                    background: parentTimezone === q.value ? '#FEF3C7' : 'white',
+                    color: parentTimezone === q.value ? '#92400E' : 'var(--text-body)',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {q.label}
+                </button>
+              ))}
             </div>
 
             <select
@@ -385,10 +448,11 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </p>
           </div>
 
-          {/* Date Chips */}
+          {/* Date Chips Carousel */}
           <div style={{ marginBottom: '32px' }}>
-            <label className="form-label" style={{ display: 'block', marginBottom: '12px' }}>
-              Select Date (Next 14 Days)
+            <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
+              <Calendar size={15} color="var(--primary)" />
+              <span>Select Date (Next 14 Days)</span>
             </label>
             <div className="date-chips-row">
               {upcomingDays.map((day) => {
@@ -408,12 +472,12 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
             <button onClick={() => setStep(1)} className="btn btn-secondary">
               <ArrowLeft size={16} />
               <span>Back</span>
             </button>
-            <button onClick={() => setStep(3)} className="btn btn-primary btn-lg">
+            <button onClick={() => setStep(3)} className="btn btn-primary btn-lg btn-shimmer">
               <span>View Open Slots for {selectedDate}</span>
               <ArrowRight size={18} />
             </button>
@@ -425,26 +489,57 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
       {step === 3 && (
         <div className="step-card">
           <div className="step-card-header">
-            <span className="badge badge-golden" style={{ marginBottom: '8px' }}>Step 3 of 4</span>
-            <h2 className="step-card-title">Select a 30-Minute Slot</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span className="badge badge-golden">Step 3 of 4 • Slot Matching</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-muted)' }}>75% Complete</span>
+            </div>
+            <h2 className="step-card-title">Select a 30-Minute Trial Slot</h2>
             <p className="step-card-desc">
               Times shown in your local timezone: <strong>{parentTimezone}</strong> on <strong>{selectedDate}</strong>.
             </p>
           </div>
 
+          {/* Segmented Filter Pills */}
+          <div className="segmented-control" style={{ marginBottom: '24px' }}>
+            <button
+              className={`segmented-tab ${activeSlotTimeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveSlotTimeFilter('all')}
+            >
+              All Shifts ({slots.filter((s) => s.isAvailable).length} open)
+            </button>
+            <button
+              className={`segmented-tab ${activeSlotTimeFilter === 'morning' ? 'active' : ''}`}
+              onClick={() => setActiveSlotTimeFilter('morning')}
+            >
+              <Sun size={13} color="#D97706" /> Morning
+            </button>
+            <button
+              className={`segmented-tab ${activeSlotTimeFilter === 'afternoon' ? 'active' : ''}`}
+              onClick={() => setActiveSlotTimeFilter('afternoon')}
+            >
+              <Sunset size={13} color="#E0522D" /> Afternoon
+            </button>
+            <button
+              className={`segmented-tab ${activeSlotTimeFilter === 'evening' ? 'active' : ''}`}
+              onClick={() => setActiveSlotTimeFilter('evening')}
+            >
+              <Moon size={13} color="#7C3AED" /> Evening
+            </button>
+          </div>
+
           {loadingSlots ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px' }}>Checking global mentor roster...</div>
-              <p style={{ fontSize: '14px' }}>Verifying operating hours and daily quotas across 10 timezones.</p>
+              <div style={{ fontSize: '18px', fontWeight: 800, marginBottom: '8px' }}>Calculating live availability...</div>
+              <p style={{ fontSize: '14px' }}>Verifying 10 mentor operating hours, daily quotas, and atomic overlap checks.</p>
             </div>
           ) : slots.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px', background: '#FEF2F2', borderRadius: '16px', color: '#DC2626' }}>
+            <div style={{ textAlign: 'center', padding: '40px', background: '#FEF2F2', borderRadius: '16px', color: '#DC2626', marginBottom: '24px' }}>
               No available slots found for this date. Please try another day.
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '28px', marginBottom: '32px' }}>
               {/* Morning */}
-              {morningSlots.length > 0 && (
+              {(activeSlotTimeFilter === 'all' || activeSlotTimeFilter === 'morning') && morningSlots.length > 0 && (
                 <div className="slots-group">
                   <div className="slots-group-title">
                     <Sun size={16} color="#D97706" />
@@ -463,7 +558,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                         >
                           <span className="slot-time">{slot.time}</span>
                           <span className="slot-status">
-                            {slot.isAvailable ? `${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Full'}
+                            {slot.isAvailable ? `⚡ ${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Fully Booked'}
                           </span>
                         </button>
                       );
@@ -473,7 +568,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
               )}
 
               {/* Afternoon */}
-              {afternoonSlots.length > 0 && (
+              {(activeSlotTimeFilter === 'all' || activeSlotTimeFilter === 'afternoon') && afternoonSlots.length > 0 && (
                 <div className="slots-group">
                   <div className="slots-group-title">
                     <Sunset size={16} color="#E0522D" />
@@ -492,7 +587,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                         >
                           <span className="slot-time">{slot.time}</span>
                           <span className="slot-status">
-                            {slot.isAvailable ? `${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Full'}
+                            {slot.isAvailable ? `⚡ ${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Fully Booked'}
                           </span>
                         </button>
                       );
@@ -502,7 +597,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
               )}
 
               {/* Evening */}
-              {eveningSlots.length > 0 && (
+              {(activeSlotTimeFilter === 'all' || activeSlotTimeFilter === 'evening') && eveningSlots.length > 0 && (
                 <div className="slots-group">
                   <div className="slots-group-title">
                     <Moon size={16} color="#7C3AED" />
@@ -521,7 +616,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                         >
                           <span className="slot-time">{slot.time}</span>
                           <span className="slot-status">
-                            {slot.isAvailable ? `${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Full'}
+                            {slot.isAvailable ? `⚡ ${slot.availableMentorsCount} mentor${slot.availableMentorsCount > 1 ? 's' : ''}` : 'Fully Booked'}
                           </span>
                         </button>
                       );
@@ -543,6 +638,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
+                boxShadow: 'var(--shadow-sm)',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -552,11 +648,11 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                     Selected: {selectedDate} at {selectedSlot.time} - {selectedSlot.endTime}
                   </div>
                   <div style={{ fontSize: '13px', color: '#047857' }}>
-                    {selectedSlot.availableMentorsCount} eligible mentor{selectedSlot.availableMentorsCount > 1 ? 's' : ''} ready to match
+                    {selectedSlot.availableMentorsCount} certified mentor{selectedSlot.availableMentorsCount > 1 ? 's' : ''} eligible in this window
                   </div>
                 </div>
               </div>
-              <span className="badge badge-green">Slot Locked</span>
+              <span className="badge badge-green">Ready to Match</span>
             </div>
           )}
 
@@ -566,7 +662,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
             <button onClick={() => setStep(2)} className="btn btn-secondary">
               <ArrowLeft size={16} />
               <span>Back</span>
@@ -581,9 +677,9 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
                 setStep(4);
               }}
               disabled={!selectedSlot}
-              className="btn btn-primary btn-lg"
+              className="btn btn-primary btn-lg btn-shimmer"
             >
-              <span>Continue to Parent Info</span>
+              <span>Continue to Parent Details</span>
               <ArrowRight size={18} />
             </button>
           </div>
@@ -594,51 +690,60 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
       {step === 4 && (
         <form onSubmit={handleSubmitBooking} className="step-card">
           <div className="step-card-header">
-            <span className="badge badge-golden" style={{ marginBottom: '8px' }}>Final Step</span>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <span className="badge badge-golden">Final Step • Instant Match</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669' }}>100% Ready</span>
+            </div>
             <h2 className="step-card-title">Where should we send the class link?</h2>
             <p className="step-card-desc">
-              The dummy video classroom link and calendar invite will be issued immediately upon confirmation.
+              Your video classroom link, calendar invite (.ics), and mentor profile will be issued immediately upon confirmation.
             </p>
           </div>
 
-          {/* Booking Summary Box */}
+          {/* 21st.dev Boarding Pass Style Summary */}
           <div
             style={{
-              background: '#FFFDF7',
-              border: '1.5px solid #F6E2B3',
+              background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFDF7 100%)',
+              border: '1.5px solid #FDE68A',
               borderRadius: 'var(--radius-lg)',
               padding: '24px',
               marginBottom: '28px',
+              boxShadow: 'var(--shadow-sm)',
+              position: 'relative',
             }}
           >
-            <h4 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '14px', color: 'var(--text-dark)' }}>
-              Trial Session Summary
-            </h4>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <span className="badge badge-golden">Trial Session Confirmation Pass</span>
+              <span style={{ fontSize: '12px', color: '#10B981', fontWeight: 700 }}>100% Free Trial</span>
+            </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Student</div>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>{childName} ({childAge} yrs)</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>Student</div>
+                <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-dark)' }}>{childName} ({childAge} yrs)</div>
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Subject</div>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>{subject}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>Subject</div>
+                <div style={{ fontWeight: 800, fontSize: '16px', color: 'var(--text-dark)' }}>{subject}</div>
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Date & Time</div>
-                <div style={{ fontWeight: 700, fontSize: '15px' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>Date & Time</div>
+                <div style={{ fontWeight: 800, fontSize: '16px', color: '#D97706' }}>
                   {selectedDate} at {selectedSlot?.time}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Your Timezone</div>
-                <div style={{ fontWeight: 700, fontSize: '14px' }}>{parentTimezone}</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800 }}>Your Timezone</div>
+                <div style={{ fontWeight: 700, fontSize: '14px', color: 'var(--text-dark)' }}>{parentTimezone}</div>
               </div>
             </div>
           </div>
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Parent / Guardian Full Name *</label>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={15} color="var(--primary)" />
+                <span>Parent / Guardian Full Name *</span>
+              </label>
               <input
                 type="text"
                 className="form-input"
@@ -650,7 +755,10 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Parent Email Address *</label>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Mail size={15} color="var(--primary)" />
+                <span>Parent Email Address *</span>
+              </label>
               <input
                 type="email"
                 className="form-input"
@@ -664,7 +772,10 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
 
           <div className="form-row">
             <div className="form-group">
-              <label className="form-label">Mobile Number (with country code)</label>
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Phone size={15} color="var(--primary)" />
+                <span>Mobile Number (with country code)</span>
+              </label>
               <input
                 type="tel"
                 className="form-input"
@@ -675,11 +786,13 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
 
             <div className="form-group">
-              <label className="form-label">Learning Goals or Prior Experience (Optional)</label>
+              <label className="form-label">
+                Prior Coding Experience or Goals (Optional)
+              </label>
               <input
                 type="text"
                 className="form-input"
-                placeholder="e.g. Beginner, loves gaming, interested in robots"
+                placeholder="e.g. Beginner, loves Minecraft, wants to build apps"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
               />
@@ -705,7 +818,7 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             </div>
           )}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '16px', borderTop: '1px solid var(--border-subtle)' }}>
             <button type="button" onClick={() => setStep(3)} className="btn btn-secondary">
               <ArrowLeft size={16} />
               <span>Back</span>
@@ -713,11 +826,11 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
             <button
               type="submit"
               disabled={submitting}
-              className="btn btn-primary btn-lg"
-              style={{ minWidth: '220px' }}
+              className="btn btn-primary btn-lg btn-shimmer"
+              style={{ minWidth: '240px' }}
             >
               {submitting ? (
-                <span>Matching Mentor...</span>
+                <span>Matching Best Mentor...</span>
               ) : (
                 <>
                   <Sparkles size={18} />

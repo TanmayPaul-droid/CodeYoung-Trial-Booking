@@ -9,11 +9,10 @@ import {
   Copy,
   Check,
   Download,
-  Share2,
   Sparkles,
-  ArrowRight,
   User,
   Star,
+  Laptop,
 } from 'lucide-react';
 import { getGoogleCalendarUrl, downloadIcsFile } from '../utils/calendar.js';
 
@@ -24,12 +23,12 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
     // Launch celebratory confetti burst
     try {
       confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#E5A62B', '#F5B731', '#10B981', '#3B82F6', '#EC4899'],
+        particleCount: 120,
+        spread: 80,
+        origin: { y: 0.55 },
+        colors: ['#F59E0B', '#D97706', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899'],
       });
-    } catch (e) {
+    } catch {
       // Ignore if canvas-confetti is not loaded
     }
   }, []);
@@ -52,16 +51,16 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
       <div className="confirmation-card">
         {/* Celebration Badge */}
         <div className="celebration-badge">
-          <CheckCircle2 size={40} />
+          <CheckCircle2 size={44} />
         </div>
 
-        <span className="badge badge-green" style={{ marginBottom: '12px' }}>
-          Booking Confirmed & Mentor Assigned
+        <span className="badge badge-green" style={{ marginBottom: '14px' }}>
+          Booking Confirmed • Mentor Assigned Instantly
         </span>
 
         <h1 className="confirmation-title">You're all set for the trial class!</h1>
         <p className="confirmation-subtitle">
-          A confirmation with classroom details has been scheduled for <strong>{booking.parentName}</strong> ({booking.parentEmail}).
+          Classroom details and calendar invite have been reserved for <strong>{booking.parentName}</strong> ({booking.parentEmail}).
         </p>
 
         {/* Assigned Mentor Card */}
@@ -79,8 +78,8 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
                 </span>
                 <div className="mentor-info-name">{mentor.name}</div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#D97706', fontWeight: 700, fontSize: '14px' }}>
-                <Star size={16} fill="#D97706" /> {mentor.rating || '4.95'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', color: '#D97706', fontWeight: 800, fontSize: '15px' }}>
+                <Star size={16} fill="#F59E0B" /> {mentor.rating || '4.95'}
               </div>
             </div>
 
@@ -90,17 +89,17 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
 
             <div className="mentor-info-meta">
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Globe size={13} /> {mentor.timezone}
+                <Globe size={13} color="var(--primary)" /> {mentor.timezone}
               </span>
               <span>•</span>
               <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Clock size={13} /> Hours: {mentor.operatingHours?.start} - {mentor.operatingHours?.end}
+                <Clock size={13} color="var(--primary)" /> Hours: {mentor.operatingHours?.start} - {mentor.operatingHours?.end}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Dual Timezone Card - Crucial PRD requirement */}
+        {/* Dual Timezone Flight Card */}
         <div className="dual-tz-card">
           {/* Parent Timezone Column */}
           <div className="tz-col">
@@ -121,7 +120,7 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
           {/* Mentor Timezone Column */}
           <div className="tz-col">
             <div className="tz-col-header">
-              <Globe size={14} color="#E5A62B" />
+              <Globe size={14} color="#F59E0B" />
               <span>Mentor Local Time ({mentor.timezone})</span>
             </div>
             <div className="tz-col-time">
@@ -135,12 +134,12 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
 
         {/* Meeting Link Box */}
         <div style={{ marginBottom: '32px' }}>
-          <div style={{ textAlign: 'left', marginBottom: '8px', fontSize: '13px', fontWeight: 700, color: 'var(--text-dark)' }}>
+          <div style={{ textAlign: 'left', marginBottom: '8px', fontSize: '13px', fontWeight: 800, color: 'var(--text-dark)' }}>
             1:1 Live Video Classroom Link
           </div>
           <div className="meeting-link-box">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Video size={20} color="#2563EB" />
+              <Video size={20} color="#166534" />
               <div className="meeting-link-text">{booking.meetingLink}</div>
             </div>
             <button
@@ -149,7 +148,7 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
               style={{ flexShrink: 0 }}
             >
               {copied ? <Check size={14} color="#10B981" /> : <Copy size={14} />}
-              <span>{copied ? 'Copied!' : 'Copy'}</span>
+              <span>{copied ? 'Copied! ✓' : 'Copy'}</span>
             </button>
           </div>
         </div>
@@ -162,7 +161,7 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
             rel="noopener noreferrer"
             className="btn btn-secondary"
           >
-            <Calendar size={16} />
+            <Calendar size={16} color="#4285F4" />
             <span>Add to Google Calendar</span>
           </a>
 
@@ -178,12 +177,12 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
         {/* Student & Course Summary Details */}
         <div
           style={{
-            background: '#F9FAFB',
+            background: '#F8FAFC',
             borderRadius: 'var(--radius-md)',
-            padding: '20px',
+            padding: '22px',
             textAlign: 'left',
             marginBottom: '36px',
-            border: '1px solid #E5E7EB',
+            border: '1px solid var(--border-subtle)',
           }}
         >
           <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-dark)', marginBottom: '12px' }}>
@@ -197,17 +196,18 @@ export default function ConfirmationView({ booking, onBookAnother, onGoHome }) {
               <strong>Topic:</strong> {booking.subject}
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong>Device Required:</strong> Laptop or Desktop with Chrome/Edge, webcam, and microphone.
+              <Laptop size={14} color="var(--primary)" />
+              <span><strong>Device Required:</strong> Laptop or Desktop with Chrome/Edge, webcam, and microphone.</span>
             </li>
             <li style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <strong>Reference ID:</strong> <code style={{ background: '#ECEFF1', padding: '2px 6px', borderRadius: '4px' }}>{booking._id}</code>
+              <strong>Reference ID:</strong> <code style={{ background: '#E2E8F0', padding: '2px 6px', borderRadius: '4px', fontFamily: 'var(--font-mono)' }}>{booking._id}</code>
             </li>
           </ul>
         </div>
 
         {/* Footer Actions */}
         <div style={{ display: 'flex', justifyContent: 'center', gap: '16px', flexWrap: 'wrap' }}>
-          <button onClick={onBookAnother} className="btn btn-primary btn-lg">
+          <button onClick={onBookAnother} className="btn btn-primary btn-lg btn-shimmer">
             <Sparkles size={18} />
             <span>Book Another Trial Class</span>
           </button>

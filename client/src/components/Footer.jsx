@@ -1,7 +1,18 @@
 import React from 'react';
-import { ShieldCheck, Award, Heart, Globe } from 'lucide-react';
+import { Award, ShieldCheck, Heart, Sparkles, Globe } from 'lucide-react';
 
 export default function Footer() {
+  const globalRegions = [
+    '🇺🇸 United States (EDT/PDT)',
+    '🇬🇧 United Kingdom (BST)',
+    '🇮🇳 India (IST)',
+    '🇦🇺 Australia (AEST)',
+    '🇸🇬 Singapore (SGT)',
+    '🇯🇵 Japan (JST)',
+    '🇦🇪 UAE (GST)',
+    '🇩🇪 Germany (CEST)',
+  ];
+
   return (
     <footer className="footer">
       <div className="content-wrapper">
@@ -9,7 +20,7 @@ export default function Footer() {
           {/* Brand Col */}
           <div className="footer-col">
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-              <div className="brand-logo-icon" style={{ width: '32px', height: '32px', fontSize: '18px' }}>
+              <div className="brand-logo-icon" style={{ width: '34px', height: '34px', fontSize: '18px' }}>
                 C
               </div>
               <div className="brand-text" style={{ color: 'white' }}>
@@ -22,7 +33,7 @@ export default function Footer() {
               coding, robotics, and AI classes tailored to your child's pace and imagination.
             </p>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#E5A62B', fontSize: '13px', fontWeight: 600 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontSize: '13px', fontWeight: 700 }}>
               <Award size={16} />
               <span>STEM.org Accredited Educational Institution</span>
             </div>
@@ -30,49 +41,49 @@ export default function Footer() {
 
           {/* Programs Col */}
           <div className="footer-col">
-            <h4>STEM Courses</h4>
+            <h4>STEM Learning Tracks</h4>
             <ul className="footer-links">
-              <li><a href="#courses">Scratch Programming (Ages 5-9)</a></li>
-              <li><a href="#courses">Python for Beginners (Ages 9-14)</a></li>
-              <li><a href="#courses">Robotics & Electronics (Ages 8-15)</a></li>
-              <li><a href="#courses">Web App Development (Ages 10-17)</a></li>
-              <li><a href="#courses">Artificial Intelligence & ML (Ages 12-18)</a></li>
-              <li><a href="#courses">Competitive Computational Math</a></li>
+              <li><a href="#courses">Scratch Coding (Ages 5-9)</a></li>
+              <li><a href="#courses">Python Foundations (Ages 9-14)</a></li>
+              <li><a href="#courses">Robotics & Hardware (Ages 8-15)</a></li>
+              <li><a href="#courses">Web Application Dev (Ages 10-17)</a></li>
+              <li><a href="#courses">AI & Neural Networks (Ages 12-18)</a></li>
             </ul>
           </div>
 
-          {/* Company Col */}
+          {/* Platform & Mentors Col */}
           <div className="footer-col">
-            <h4>Codeyoung</h4>
+            <h4>Platform</h4>
             <ul className="footer-links">
-              <li><a href="#mentors">Our Global Mentors</a></li>
-              <li><a href="#why-codeyoung">Why Codeyoung</a></li>
+              <li><a href="#mentors">Our 10 Global Mentors</a></li>
+              <li><a href="#why-codeyoung">Why 1:1 Mentoring</a></li>
               <li><a href="#why-codeyoung">Parent Reviews & Stories</a></li>
-              <li><a href="#">Curriculum Pedagogy</a></li>
-              <li><a href="#">Safety & Child Protection</a></li>
-              <li><a href="#">Careers</a></li>
+              <li><a href="#">Child Safety & Protection</a></li>
+              <li><a href="#">Pedagogical Framework</a></li>
             </ul>
           </div>
 
           {/* Global Operations Col */}
           <div className="footer-col">
-            <h4>Global Presence</h4>
+            <h4>Global Synchronized Network</h4>
             <p style={{ fontSize: '13px', color: '#94A3B8', lineHeight: '1.6', marginBottom: '14px' }}>
-              Mentors operating across 10+ timezones with seamless scheduling:
+              Live 1:1 sessions operating continuously across 10+ timezones:
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-              {['United States', 'United Kingdom', 'Canada', 'India', 'UAE & Dubai', 'Singapore', 'Australia', 'Germany'].map((c, i) => (
+              {globalRegions.map((region, i) => (
                 <span
                   key={i}
                   style={{
                     fontSize: '11px',
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    background: 'rgba(255, 255, 255, 0.08)',
-                    color: '#CBD5E1',
+                    padding: '4px 10px',
+                    borderRadius: 'var(--radius-pill)',
+                    background: 'rgba(255, 255, 255, 0.07)',
+                    color: '#E2E8F0',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    fontWeight: 500,
                   }}
                 >
-                  {c}
+                  {region}
                 </span>
               ))}
             </div>
@@ -81,12 +92,12 @@ export default function Footer() {
 
         <div className="footer-bottom">
           <div>
-            © {new Date().getFullYear()} Codeyoung. All rights reserved. Empowering future innovators worldwide.
+            © {new Date().getFullYear()} Codeyoung. All rights reserved. Built with modern 21st.dev UI standards.
           </div>
-          <div style={{ display: 'flex', gap: '20px' }}>
+          <div style={{ display: 'flex', gap: '24px' }}>
             <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
             <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Cookie Settings</a>
+            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Safety Guidelines</a>
           </div>
         </div>
       </div>

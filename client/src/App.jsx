@@ -7,6 +7,8 @@ import MentorsShowcase from './components/MentorsShowcase.jsx';
 import WhyCodeyoung from './components/WhyCodeyoung.jsx';
 import ConfirmationView from './components/ConfirmationView.jsx';
 import BookingsListModal from './components/BookingsListModal.jsx';
+import AccordionBasic from './components/AccordionBasic.jsx';
+import WorksWheelDemo from './components/ui/works-wheel-demo.tsx';
 import Footer from './components/Footer.jsx';
 
 export default function App() {
@@ -98,6 +100,51 @@ export default function App() {
           />
 
           <WhyCodeyoung />
+
+          <section id="showcase-section" style={{ padding: '70px 0 80px' }}>
+            <div className="content-wrapper">
+              <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 40px' }}>
+                <span className="badge badge-golden" style={{ marginBottom: '12px' }}>Student Creations</span>
+                <h2 style={{ fontSize: '38px', fontWeight: 800, letterSpacing: '-0.8px', marginBottom: '12px' }}>
+                  What our students build with <span className="text-gradient">1:1 Mentorship</span>
+                </h2>
+                <p style={{ fontSize: '16px', color: 'var(--text-body)' }}>
+                  Turn the 3D interactive wheel or scroll to browse real capstone projects created by young coders aged 5–17.
+                </p>
+              </div>
+
+              <WorksWheelDemo />
+            </div>
+          </section>
+
+          <section id="faq-section" style={{ padding: '70px 0 80px' }}>
+            <div className="content-wrapper">
+              <div style={{ textAlign: 'center', maxWidth: '640px', margin: '0 auto 40px' }}>
+                <span className="badge badge-golden" style={{ marginBottom: '12px' }}>FAQ</span>
+                <h2 style={{ fontSize: '36px', fontWeight: 800, letterSpacing: '-0.8px', marginBottom: '12px' }}>
+                  Frequently Asked Questions
+                </h2>
+                <p style={{ fontSize: '16px', color: 'var(--text-body)' }}>
+                  Everything you need to know about our trial classes, subscription plans, and secure payment methods.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <div
+                  className="card"
+                  style={{
+                    width: '100%',
+                    maxWidth: '680px',
+                    padding: '28px 32px',
+                    background: 'white',
+                    borderRadius: 'var(--radius-xl)',
+                  }}
+                >
+                  <AccordionBasic />
+                </div>
+              </div>
+            </div>
+          </section>
         </main>
       )}
 

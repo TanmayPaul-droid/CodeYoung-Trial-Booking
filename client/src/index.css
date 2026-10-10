@@ -1386,10 +1386,42 @@ h1, h2, h3, h4, h5, h6 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 13px;
+  font-size: 13.5px;
   color: #64748B;
   flex-wrap: wrap;
-  gap: 16px;
+  gap: 20px;
+}
+
+.footer-bottom-copy {
+  color: #64748B;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.footer-bottom-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.footer-bottom-link {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: #64748B;
+  font-size: 13.5px;
+  font-family: inherit;
+  font-weight: 400;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+
+.footer-bottom-link:hover {
+  color: #94A3B8;
 }
 
 /* =====================================================================
@@ -1433,6 +1465,15 @@ h1, h2, h3, h4, h5, h6 {
   }
   .footer-grid {
     grid-template-columns: 1fr;
+  }
+  .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .footer-bottom-links {
+    flex-wrap: wrap;
+    gap: 18px;
   }
   .hero-stats-row {
     grid-template-columns: repeat(2, 1fr);

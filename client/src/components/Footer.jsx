@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Award, ShieldCheck, Heart, Sparkles, Globe } from 'lucide-react';
+import LegalModal from './LegalModal.jsx';
 
 export default function Footer() {
+  const [legalModalTab, setLegalModalTab] = useState(null);
   const globalRegions = [
     '🇺🇸 United States (EDT/PDT)',
     '🇬🇧 United Kingdom (BST)',
@@ -91,16 +93,40 @@ export default function Footer() {
         </div>
 
         <div className="footer-bottom">
-          <div>
-            © {new Date().getFullYear()} Codeyoung. All rights reserved. Built with modern 21st.dev UI standards.
+          <div className="footer-bottom-copy">
+            © {new Date().getFullYear()} Codeyoung. All rights reserved. Empowering future innovators worldwide.
           </div>
-          <div style={{ display: 'flex', gap: '24px' }}>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
-            <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Safety Guidelines</a>
+          <div className="footer-bottom-links">
+            <button
+              type="button"
+              className="footer-bottom-link"
+              onClick={() => setLegalModalTab('privacy')}
+            >
+              Privacy Policy
+            </button>
+            <button
+              type="button"
+              className="footer-bottom-link"
+              onClick={() => setLegalModalTab('terms')}
+            >
+              Terms of Service
+            </button>
+            <button
+              type="button"
+              className="footer-bottom-link"
+              onClick={() => setLegalModalTab('cookies')}
+            >
+              Cookie Settings
+            </button>
           </div>
         </div>
       </div>
+
+      <LegalModal
+        isOpen={Boolean(legalModalTab)}
+        initialTab={legalModalTab || 'privacy'}
+        onClose={() => setLegalModalTab(null)}
+      />
     </footer>
   );
 }

@@ -10,61 +10,79 @@ A full-stack, enterprise-grade trial class booking platform inspired by CodeYoun
 
 Open the live demo to explore the trial-class booking experience. To run the project locally, follow the Quick Start Guide below.
 
-🚀 How to Run Locally
+# CodeYoung Trial Class Booking System 🚀
 
-Prerequisites
+A full-stack trial class booking platform built with React, Vite, Express.js, MongoDB, and timezone-aware scheduling.
 
-Node.js v18 or later
+## 🌐 Live Demo
 
-npm
+**Web Application:** https://code-young-trial-booking.vercel.app/
 
-MongoDB local instance or MongoDB Atlas
+**GitHub Repository:** https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking
 
-1. Clone the repository
+Click the live demo link to explore the application.
 
+## 🚀 How to Run Locally
+
+### Prerequisites
+- Node.js v18 or later
+- npm
+- MongoDB local instance or MongoDB Atlas
+
+### 1. Clone the repository
+
+```bash
 git clone https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking.git
 cd CodeYoung-Trial-Booking
+```
 
-2. Install dependencies
+### 2. Install dependencies
 
+```bash
 npm install
 npm --prefix server install
 npm --prefix client install
+```
 
-3. Configure environment variables
+### 3. Configure environment variables
 
-Create the backend .env file in the directory expected by your server configuration.
+Create the backend `.env` file in the directory expected by your server configuration.
 
 Example:
 
+```env
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung_booking
 NODE_ENV=development
+```
 
 Use your own MongoDB connection string and never commit secrets to GitHub.
 
-4. Start the backend
+### 4. Start the backend
 
+```bash
 npm run dev:server
+```
 
-5. Start the frontend
+### 5. Start the frontend
 
 Open a second terminal and run:
 
+```bash
 npm run dev:client
+```
 
 Open the local URL printed by Vite, typically http://localhost:5173/.
 
-6. Run tests
+### 6. Run tests
 
-If the test script is configured in your root package.json:
+If the test script is configured in your root `package.json`:
 
+```bash
 npm run test:server
+```
 
-Refer to the root, server/package.json, and client/package.json files for the exact scripts supported by your project.
-
-
-
+Refer to the root, `server/package.json`, and `client/package.json` files for the exact scripts supported by your project.
 🌟 Key Features
 
 1\. Brand-Authentic UI & Design System

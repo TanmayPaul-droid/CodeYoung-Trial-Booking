@@ -1,41 +1,56 @@
+
 import mongoose from 'mongoose';
 import { Mentor } from '../models/Mentor.js';
 import { Booking } from '../models/Booking.js';
 import { checkMentorAvailabilityForSlot } from './slotService.js';
+
 import {
   parseLocalToUTC,
   formatInTZ,
   isValidIANATimezone,
 } from '../utils/timezone.js';
 
-// Simple in-memory mutex to serialize concurrent booking attempts in node process
+// In-process mutex to serialize booking attempts.
 let bookingLock = Promise.resolve();
+
 function acquireBookingLock() {
   let release;
+
   const nextLock = new Promise((resolve) => {
     release = resolve;
   });
+
   const currentLock = bookingLock;
   bookingLock = bookingLock.then(() => nextLock);
+
   return currentLock.then(() => release);
 }
 
-// Check once if MongoDB deployment supports multi-document transactions (requires replica set)
+// Check whether MongoDB supports multi-document transactions.
 let canUseTransactions = null;
+
 async function checkTransactionSupport() {
-  if (canUseTransactions !== null) return canUseTransactions;
+  if (canUseTransactions !== null) {
+    return canUseTransactions;
+  }
+
   try {
-    const hello = await mongoose.connection.db.admin().command({ hello: 1 });
+    const hello = await mongoose.connection.db.admin().command({
+      hello: 1,
+    });
+
     canUseTransactions = Boolean(hello.setName);
-  } catch (e) {
+  } catch {
     canUseTransactions = false;
   }
+
   return canUseTransactions;
 }
 
 /**
- * Creates a trial class booking by matching an eligible mentor,
- * verifying constraints, and atomically persisting the booking.
+ * Creates a trial class booking by finding an eligible mentor.
+ *
+ * If no mentor is available, throws an error with statusCode 409.
  */
 export async function createBooking(bookingPayload) {
   const {
@@ -45,106 +60,212 @@ export async function createBooking(bookingPayload) {
     childName,
     childAge,
     subject,
-    date, // 'YYYY-MM-DD'
-    time, // 'HH:mm'
+    date,
+    time,
     startTimeUTC: inputStartTimeUTC,
     parentTimezone,
     notes,
   } = bookingPayload;
 
-  // Validation
-  if (!parentName?.trim()) throw new Error('Parent name is required.');
-  if (!parentEmail?.trim()) throw new Error('Parent email is required.');
-  if (!childName?.trim()) throw new Error('Child name is required.');
-  if (!childAge || Number(childAge) < 4 || Number(childAge) > 18) {
-    throw new Error('Child age must be between 4 and 18.');
-  }
-  if (!subject?.trim()) throw new Error('Subject is required.');
-  if (!parentTimezone || !isValidIANATimezone(parentTimezone)) {
-    throw new Error(`Valid IANA parent timezone is required (received: ${parentTimezone}).`);
+  // 1. Validate booking details.
+  if (!parentName?.trim()) {
+    const error = new Error('Parent name is required.');
+    error.statusCode = 400;
+    throw error;
   }
 
-  // Determine start & end time UTC
+  if (!parentEmail?.trim()) {
+    const error = new Error('Parent email is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!childName?.trim()) {
+    const error = new Error('Child name is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (
+    childAge === undefined ||
+    childAge === null ||
+    childAge === '' ||
+    !Number.isFinite(Number(childAge)) ||
+    Number(childAge) < 4 ||
+    Number(childAge) > 18
+  ) {
+    const error = new Error(
+      'Child age must be between 4 and 18.'
+    );
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!subject?.trim()) {
+    const error = new Error('Subject is required.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (
+    !parentTimezone ||
+    !isValidIANATimezone(parentTimezone)
+  ) {
+    const error = new Error(
+  'Valid IANA parent timezone is required (received: ' +
+    `${parentTimezone}).`
+);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // 2. Convert the requested start time to UTC.
   let startUTC;
-  if (inputStartTimeUTC) {
-    startUTC = new Date(inputStartTimeUTC);
-    if (isNaN(startUTC.getTime())) {
-      throw new Error('Invalid startTimeUTC format.');
-    }
-  } else if (date && time) {
-    startUTC = parseLocalToUTC(date, time, parentTimezone);
-  } else {
-    throw new Error('Either startTimeUTC or (date, time) must be provided.');
-  }
-
-  // Duration is 30 minutes
-  const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
-
-  // Concurrency synchronization: acquire in-process lock
-  const releaseLock = await acquireBookingLock();
-
-  const isTxnSupported = await checkTransactionSupport();
-  const session = isTxnSupported ? await mongoose.startSession() : null;
 
   try {
-    if (session) {
+    if (inputStartTimeUTC) {
+      startUTC = new Date(inputStartTimeUTC);
+
+      if (Number.isNaN(startUTC.getTime())) {
+        throw new Error('Invalid startTimeUTC format.');
+      }
+    } else if (date && time) {
+      startUTC = parseLocalToUTC(
+        date,
+        time,
+        parentTimezone
+      );
+    } else {
+      throw new Error(
+        'Either startTimeUTC or (date, time) must be provided.'
+      );
+    }
+  } catch (error) {
+    error.statusCode = error.statusCode || 400;
+    throw error;
+  }
+
+  // Each trial class lasts 30 minutes.
+  const endUTC = new Date(
+    startUTC.getTime() + 30 * 60 * 1000
+  );
+
+  // 3. Serialize booking attempts within this Node.js process.
+  const releaseLock = await acquireBookingLock();
+
+  let session = null;
+
+  try {
+    const isTxnSupported = await checkTransactionSupport();
+
+    if (isTxnSupported) {
+      session = await mongoose.startSession();
       session.startTransaction();
     }
 
     const sessionOpts = session ? { session } : {};
 
-    // 1. Fetch all active mentors
-    const mentors = await Mentor.find({ isActive: true }, null, sessionOpts).sort({ _id: 1 });
-    if (!mentors || mentors.length === 0) {
-      throw new Error('No mentors registered in the system.');
+    // 4. Fetch active mentors.
+    const mentors = await Mentor.find(
+      { isActive: true },
+      null,
+      sessionOpts
+    ).sort({ _id: 1 });
+
+    if (mentors.length === 0) {
+      const error = new Error(
+        'We are unable to find any active mentors right now. Please try again later.'
+      );
+
+      error.statusCode = 503;
+      throw error;
     }
 
-    // 2. Evaluate eligibility for each mentor
+    // 5. Check availability for every active mentor.
     const eligibleMentors = [];
+
     for (const mentor of mentors) {
-      const check = await checkMentorAvailabilityForSlot(mentor, startUTC, endUTC, sessionOpts);
-      if (check.isAvailable) {
+      const availability = await checkMentorAvailabilityForSlot(
+        mentor,
+        startUTC,
+        endUTC,
+        sessionOpts
+      );
+
+      if (availability.isAvailable) {
         eligibleMentors.push({
           mentor,
-          currentDailyCount: check.currentDailyCount,
+          currentDailyCount:
+            availability.currentDailyCount ?? 0,
         });
       }
     }
 
-    // 3. If no eligible mentors, abort transaction and reject with 409
+    // 6. Return a clear conflict if no mentor can take the class.
     if (eligibleMentors.length === 0) {
-      const conflictError = new Error('No mentors available for the selected slot. All mentors are either outside operating hours, at full daily capacity, or already booked.');
-      conflictError.statusCode = 409;
-      throw conflictError;
+      const error = new Error(
+        'Sorry, no mentors are available for your selected date and time. Please choose another date or time slot and try again.'
+      );
+
+      error.statusCode = 409;
+      throw error;
     }
 
-    // 4. Mentor assignment algorithm:
-    // - Least loaded mentor first (fewest bookings today)
-    // - Tie-breaker: mentor _id ascending
+    // 7. Prefer the least-loaded eligible mentor.
+    // Break ties using mentor ID for deterministic selection.
     eligibleMentors.sort((a, b) => {
       if (a.currentDailyCount !== b.currentDailyCount) {
         return a.currentDailyCount - b.currentDailyCount;
       }
-      return a.mentor._id.toString().localeCompare(b.mentor._id.toString());
+
+      return a.mentor._id
+        .toString()
+        .localeCompare(b.mentor._id.toString());
     });
 
     const selectedMentor = eligibleMentors[0].mentor;
 
-    // 5. Generate meeting link and localized display times
-    const meetingId = `${selectedMentor._id.toString().slice(-4)}-${Date.now().toString(36)}`;
-    const meetingLink = `https://code-young-trial-booking.vercel.app/demo-class?meetingId=${meetingId}`;
+    // 8. Generate the meeting link and localized times.
+    const meetingId =
+      `${selectedMentor._id.toString().slice(-4)}-` +
+      `${Date.now().toString(36)}`;
 
-    const parentLocalStartTime = formatInTZ(startUTC, parentTimezone, 'yyyy-MM-dd HH:mm (zzz)');
-    const parentLocalEndTime = formatInTZ(endUTC, parentTimezone, 'yyyy-MM-dd HH:mm (zzz)');
-    const mentorLocalStartTime = formatInTZ(startUTC, selectedMentor.timezone, 'yyyy-MM-dd HH:mm (zzz)');
-    const mentorLocalEndTime = formatInTZ(endUTC, selectedMentor.timezone, 'yyyy-MM-dd HH:mm (zzz)');
+    const meetingLink =
+      `https://code-young-trial-booking.vercel.app/demo-class` +
+      `?meetingId=${encodeURIComponent(meetingId)}`;
 
-    // 6. Create booking
+    const parentLocalStartTime = formatInTZ(
+      startUTC,
+      parentTimezone,
+      'yyyy-MM-dd HH:mm (zzz)'
+    );
+
+    const parentLocalEndTime = formatInTZ(
+      endUTC,
+      parentTimezone,
+      'yyyy-MM-dd HH:mm (zzz)'
+    );
+
+    const mentorLocalStartTime = formatInTZ(
+      startUTC,
+      selectedMentor.timezone,
+      'yyyy-MM-dd HH:mm (zzz)'
+    );
+
+    const mentorLocalEndTime = formatInTZ(
+      endUTC,
+      selectedMentor.timezone,
+      'yyyy-MM-dd HH:mm (zzz)'
+    );
+
+    // 9. Create the confirmed booking.
     const booking = new Booking({
       mentorId: selectedMentor._id,
       parentName: parentName.trim(),
       parentEmail: parentEmail.trim().toLowerCase(),
-      parentPhone: parentPhone ? parentPhone.trim() : '',
+      parentPhone: parentPhone
+        ? parentPhone.trim()
+        : '',
       childName: childName.trim(),
       childAge: Number(childAge),
       subject: subject.trim(),
@@ -167,18 +288,23 @@ export async function createBooking(bookingPayload) {
       await booking.save();
     }
 
-    // Return populated booking
-    const populated = await Booking.findById(booking._id).populate('mentorId');
-    return populated;
+    // 10. Return the booking with mentor details.
+    const populatedBooking = await Booking.findById(
+      booking._id
+    ).populate('mentorId');
+
+    return populatedBooking;
   } catch (error) {
     if (session && session.inTransaction()) {
       await session.abortTransaction();
     }
+
     throw error;
   } finally {
     if (session) {
-      session.endSession();
+      await session.endSession();
     }
+
     releaseLock();
   }
 }
@@ -188,22 +314,28 @@ export async function createBooking(bookingPayload) {
  */
 export async function getBookingById(bookingId) {
   if (!mongoose.Types.ObjectId.isValid(bookingId)) {
-    const err = new Error('Invalid booking ID format');
-    err.statusCode = 400;
-    throw err;
+    const error = new Error('Invalid booking ID format.');
+    error.statusCode = 400;
+    throw error;
   }
-  const booking = await Booking.findById(bookingId).populate('mentorId');
+
+  const booking = await Booking.findById(bookingId)
+    .populate('mentorId');
+
   if (!booking) {
-    const err = new Error('Booking not found');
-    err.statusCode = 404;
-    throw err;
+    const error = new Error('Booking not found.');
+    error.statusCode = 404;
+    throw error;
   }
+
   return booking;
 }
 
 /**
- * Lists all bookings (with optional filters)
+ * Lists bookings with optional MongoDB filters.
  */
 export async function listBookings(filter = {}) {
-  return Booking.find(filter).populate('mentorId').sort({ startTimeUTC: -1 });
+  return Booking.find(filter)
+    .populate('mentorId')
+    .sort({ startTimeUTC: -1 });
 }

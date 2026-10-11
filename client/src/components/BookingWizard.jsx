@@ -145,7 +145,7 @@ fetch(`https://codeyoung-trial-booking-2.onrender.com/api/slots?date=${selectedD
     setSubmitting(true);
 
     try {
-      const response = await fetch('/api/bookings', {
+      const response = await fetch('https://codeyoung-trial-booking-2.onrender.com/api/bookings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

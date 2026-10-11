@@ -132,7 +132,7 @@ export async function createBooking(bookingPayload) {
 
     // 5. Generate meeting link and localized display times
     const meetingId = `${selectedMentor._id.toString().slice(-4)}-${Date.now().toString(36)}`;
-    const meetingLink = `https://meet.codeyoung.com/trial-${meetingId}`;
+    const meetingLink = `https://code-young-trial-booking.vercel.app/demo-class?meetingId=${meetingId}`;
 
     const parentLocalStartTime = formatInTZ(startUTC, parentTimezone, 'yyyy-MM-dd HH:mm (zzz)');
     const parentLocalEndTime = formatInTZ(endUTC, parentTimezone, 'yyyy-MM-dd HH:mm (zzz)');

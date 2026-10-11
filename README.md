@@ -1,54 +1,124 @@
-CodeYoung Trial Class Booking System 🚀
+# 🚀 CodeYoung Trial Class Booking Platform
 
-A full-stack, enterprise-grade trial class booking platform inspired by CodeYoung.com. Built with React (Vite), Express.js, MongoDB (Mongoose), and precise IANA timezone and Daylight Saving Time (DST) synchronization using date-fns-tz.
-
-## 🌐 Live Demo
-
-**Live Web Application:** https://code-young-trial-booking.vercel.app/
-
-**GitHub Repository:** https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking
-
-Open the live demo to explore the trial-class booking experience. To run the project locally, follow the Quick Start Guide below.
-
-# CodeYoung Trial Class Booking System 🚀
-
-A full-stack trial class booking platform built with React, Vite, Express.js, MongoDB, and timezone-aware scheduling.
+A full-stack trial-class booking platform inspired by CodeYoung, built with React, Vite, Express.js, MongoDB, and timezone-aware scheduling. The application supports global mentor allocation, booking conflict prevention, Daylight Saving Time (DST) handling, and calendar integration.
 
 ## 🌐 Live Demo
 
-**Web Application:** https://code-young-trial-booking.vercel.app/
+- **Live Application:** [https://code-young-trial-booking.vercel.app/](https://code-young-trial-booking.vercel.app/)
+- **GitHub Repository:** [https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking](https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking)
 
-**GitHub Repository:** https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking
+Explore the live application or follow the setup instructions below to run the project locally.
 
-Click the live demo link to explore the application.
+## ✨ Key Features
 
-## 🚀 How to Run Locally
+### 🎨 1. Responsive User Interface
 
-### Prerequisites
-- Node.js v18 or later
-- npm
-- MongoDB local instance or MongoDB Atlas
+- Responsive landing page and trial-class booking workflow.
+- Consistent design system with interactive components.
+- Booking confirmation experience with celebratory animations.
+- Mentor profiles and course showcase.
 
-### 1. Clone the repository
+### 🌍 2. Global Mentor Network
+
+- Seed data designed for 10 mentors across different IANA timezones.
+- Mentor operating hours enforced in the mentor's local timezone.
+- Maximum of two trial classes per mentor per local calendar day, as implemented by the booking logic.
+
+### 🕒 3. Timezone and DST Intelligence
+
+- IANA timezone validation.
+- Timezone conversion using `date-fns-tz`.
+- UTC-based booking timestamps.
+- Parent and mentor local times displayed in booking confirmations.
+- Daylight-saving transitions handled without relying on fixed UTC offsets.
+
+### ⚖️ 4. Mentor Assignment and Booking Conflict Prevention
+
+- Assigns eligible mentors based on existing daily booking load.
+- Deterministic tie-breaking for mentor selection.
+- Prevents overlapping bookings for the same mentor.
+- In-process mutex locking to help manage concurrent booking requests within a single server process.
+
+> Multi-instance deployments require appropriate database-level concurrency controls or distributed locking.
+
+### 📅 5. Calendar and Meeting Integration
+
+- Meeting link generation.
+- Google Calendar integration.
+- Downloadable `.ics` calendar invitations.
+- Booking lookup and confirmation details.
+
+### 🧪 6. Testing
+
+- Backend tests using Node.js's built-in test runner.
+- Booking validation and availability scenarios.
+- Timezone conversion and DST scenarios.
+
+Run the test suite to determine which scenarios currently pass.
+
+## 🛠️ Tech Stack
+
+| Layer             | Technologies                               |
+| ----------------- | ------------------------------------------ |
+| Frontend          | React, Vite, CSS                           |
+| UI and Icons      | Lucide React                               |
+| Animations        | Motion, Canvas Confetti                    |
+| Backend           | Node.js, Express.js                        |
+| Database          | MongoDB, Mongoose                          |
+| Date and Time     | date-fns, date-fns-tz                      |
+| Email Integration | Nodemailer, Resend                         |
+| Testing           | Node.js Test Runner, MongoDB Memory Server |
+| Version Control   | Git, GitHub                                |
+
+## 📋 Prerequisites
+
+Install the following before running the project:
+
+- **Node.js:** A version compatible with the project's dependencies. Node.js 20 or later is recommended, but verify compatibility with the installed packages.
+- **npm:** Installed with Node.js.
+- **MongoDB:** A local MongoDB instance or a MongoDB Atlas connection.
+- **Git:** Required to clone the repository.
+
+Verify your installations:
+
+```bash
+node --version
+npm --version
+git --version
+```
+
+## 🚀 Quick Start Guide
+
+### 1. Clone the Repository
 
 ```bash
 git clone https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking.git
 cd CodeYoung-Trial-Booking
 ```
 
-### 2. Install dependencies
+Run all subsequent commands from the repository root unless specified otherwise.
+
+### 2. Install Dependencies
+
+Install the frontend dependencies:
 
 ```bash
-npm install
-npm --prefix server install
-npm --prefix client install
+npm install --prefix client
 ```
 
-### 3. Configure environment variables
+Install the backend dependencies:
 
-Create the backend `.env` file in the directory expected by your server configuration.
+```bash
+npm install --prefix server
+```
 
-Example:
+The root `package.json` provides orchestration scripts and does not currently declare application dependencies.
+
+### 3. Configure Environment Variables
+
+Create the backend `.env` file in the location expected by the server's configuration.
+
+For example, if the backend reads `server/.env`, create that file with the following settings:
 
 ```env
 PORT=5000
@@ -56,352 +126,291 @@ MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung_booking
 NODE_ENV=development
 ```
 
-Use your own MongoDB connection string and never commit secrets to GitHub.
+These are example values. Check the backend source code to confirm the exact required environment variable names and defaults.
 
-### 4. Start the backend
+If using MongoDB Atlas, replace the example URI with your own connection string and configure database access appropriately.
+
+If email notifications are enabled, configure any required email credentials or API keys using the variable names expected by the application.
+
+**Security guidelines:**
+
+- Never commit real credentials, API keys, or database passwords.
+- Keep `.env` files excluded from Git.
+- Maintain a `.env.example` containing variable names and safe placeholder values.
+- Do not publish production credentials in the README or transcript.
+
+### 4. Start the Backend
+
+Open a terminal in the repository root:
 
 ```bash
 npm run dev:server
 ```
 
-### 5. Start the frontend
+This invokes the backend development script defined in `server/package.json` and starts `server/src/server.js`.
 
-Open a second terminal and run:
+Keep the terminal running.
+
+### 5. Start the Frontend
+
+Open a second terminal in the repository root:
 
 ```bash
 npm run dev:client
 ```
 
-Open the local URL printed by Vite, typically http://localhost:3000/.
+Alternatively, start the frontend directly:
 
-### 6. Run tests
+```bash
+cd client
+npm run dev
+```
 
-If the test script is configured in your root `package.json`:
+Vite will display the local development URL in the terminal. Open that URL in your browser.
+
+Keep both the frontend and backend running while testing the application.
+
+### 6. Seed the Database
+
+If the application requires sample mentor data, configure MongoDB and run the seed script from the repository root:
+
+```bash
+npm run seed
+```
+
+This invokes `server/src/scripts/seed.js`.
+
+**Warning:** Inspect the seed script before running it against a database containing data you want to preserve.
+
+### 7. Run Backend Tests
+
+From the repository root:
 
 ```bash
 npm run test:server
 ```
 
-Refer to the root, `server/package.json`, and `client/package.json` files for the exact scripts supported by your project.
-🌟 Key Features
+This invokes the test script configured in `server/package.json`.
 
-1\. Brand-Authentic UI & Design System
+Review the test output to confirm which tests pass and investigate any failures.
 
-Styled to match CodeYoung.com with warm cream surfaces (#FBF7EF), golden-yellow CTA pills (#E5A62B), dark teal typography, and STEM badges.
+## 🔧 Troubleshooting
 
-Micro-animations, responsive layouts, and celebratory confetti upon booking confirmation.
+### Vite is not recognized
 
-2\. 1:1 Global Mentor Network
+Install the frontend dependencies:
 
-Seeded with 10 global STEM mentors across diverse IANA timezones: New York, London, Tokyo, Singapore, Sydney, Berlin, Kolkata, Dubai, Chicago, and Los Angeles.
+```bash
+npm install --prefix client
+```
 
-Strict operating hours enforcement (09:00 to 17:00 in the mentor's local timezone).
+Then retry:
 
-Daily limit capped at 2 trial classes per mentor per local calendar day, giving the network a maximum theoretical capacity of 20 classes per day.
+```bash
+npm run dev:client
+```
 
-3\. Timezone & Daylight Saving Time (DST) Intelligence
+### MongoDB connection fails
 
-IANA timezone identifier validation using Intl and date-fns-tz.
+- Check the MongoDB service or Atlas availability.
+- Verify the connection string in the backend `.env` file.
+- Confirm the database user and network access permissions.
+- Check the backend terminal for connection errors.
 
-Dynamically calculates UTC start and end times without assuming static UTC offsets.
+### Port is already in use
 
-Dual-timezone confirmation card displaying both parent local time and mentor local time with accurate timezone abbreviations (e.g., EDT, IST, BST).
+Stop the process occupying the required port or configure an available port using the project's supported environment variables.
 
-4\. Intelligent Concurrency & Mentor Assignment
+### Dependency installation fails
 
-Load-balancing assignment: Assigns the least-loaded eligible mentor for the day, prioritizing mentors with zero bookings before mentors with one booking.
+- Check your Node.js and npm versions.
+- Run the installation command from the correct project directory.
+- Read the complete npm error output.
+- Review package compatibility before changing dependency versions.
 
-Deterministic tie-breaking: Consistent sorting by mentor \_id.
+### Environment variables are missing
 
-No double-booking: Uses the overlap condition existing.start < requested.end && existing.end > requested.start.
+Verify the expected variable names in the backend configuration and ensure the `.env` file is located where the application loads it.
 
-In-process mutex locking helps prevent race conditions within a single server process. Multi-instance deployments require suitable database-level concurrency controls or distributed locking.
+### Frontend cannot reach the backend
 
-5\. Integrated Calendar & Classroom Tools
+Check that the backend is running, the frontend uses the correct API base URL, and the backend CORS configuration permits the frontend origin.
 
-Instant demo meeting link generation using a URL such as https\://meet.codeyoung.com/trial-....
+## 🔐 Security and Production Considerations
 
-One-click Add to Google Calendar link.
+- Keep credentials and environment files out of version control.
+- Validate incoming API requests.
+- Restrict development-only endpoints.
+- Configure production CORS and error handling.
+- Review npm audit findings and address applicable vulnerabilities.
+- Use appropriate database-level concurrency controls for multi-instance deployments.
+- Protect email services and database credentials.
+- Verify production environment variables and deployment settings.
 
-One-click download of .ics calendar invitations for Apple Calendar, Outlook, and mobile devices.
+## 🧪 Test Scenarios
 
-In-app Live Bookings Audit Modal with refresh and development database reseeding controls.
+The test suite is intended to cover scenarios such as:
 
-🛠️ Tech Stack
+1. Successful booking creation.
+2. Mentor operating-hours enforcement.
+3. Rejection of unavailable time slots.
+4. Prevention of overlapping bookings.
+5. Allowance of valid consecutive bookings.
+6. Daily booking-limit enforcement.
+7. Assignment to another eligible mentor when necessary.
+8. Least-loaded mentor selection.
+9. Deterministic mentor tie-breaking.
+10. Parent timezone conversion to UTC.
+11. Mentor local-time calculation.
+12. Correct UTC timestamp storage.
+13. Meeting link generation.
+14. Booking confirmation with both local times.
+15. Acceptance of valid IANA timezones.
+16. Rejection of invalid timezones.
+17. Daylight-saving transition handling.
+18. Handling of slots crossing UTC midnight.
+19. Rejection of unsupported local-time intervals.
+20. Concurrent booking conflict prevention.
+21. Enforcement of mentor daily capacity.
+22. Verification of seeded mentor count.
+23. Booking retrieval with populated mentor details.
 
-Frontend: React 18, Vite, Vanilla CSS (Design System), Lucide Icons, Canvas Confetti
+These scenarios describe intended coverage and are not a claim that every test currently passes.
 
-Backend: Node.js (v20+ recommended), Express.js
+## 📡 REST API Documentation
 
-Database: MongoDB, Mongoose 8+
+The following endpoints describe the intended API. Verify route paths, request fields, and response formats against the current backend implementation.
 
-Timezone Engine: date-fns and date-fns-tz
+### 1. Get Mentors
 
+**Method:** `GET`
 
-Test Scenarios
+```http
+/api/mentors
+```
 
-✔ Scenario 1: Valid slot booking creates a confirmed database record.
+Returns active mentor profiles, potentially including timezone, subjects, availability, ratings, and biography.
 
-✔ Scenario 2: Mentor assignment respects operating hours in the mentor's local timezone.
+### 2. Get Available Slots
 
-✔ Scenario 3: Mentor is unavailable outside operating hours.
+**Method:** `GET`
 
-✔ Scenario 4: Overlapping bookings are prevented for the same mentor.
+```http
+/api/slots?date=2026-10-12&timezone=America/New_York
+```
 
-✔ Scenario 5: Non-overlapping consecutive bookings are allowed.
+Query parameters:
 
-✔ Scenario 6: Daily limit of two classes per mentor is enforced.
+- `date`: Requested date in `YYYY-MM-DD` format.
+- `timezone`: Valid IANA timezone identifier.
 
-✔ Scenario 7: A third booking is delegated to another eligible mentor.
+Returns available booking intervals and related availability information, according to the implemented response schema.
 
-✔ Scenario 8: Least-loaded eligible mentor is chosen first.
+### 3. Create a Booking
 
-✔ Scenario 9: Deterministic tie-breaker selects a mentor by sorted ID.
+**Method:** `POST`
 
-✔ Scenario 10: Parent local time is converted to UTC correctly.
+```http
+/api/bookings
+```
 
-✔ Scenario 11: Mentor local time is computed from UTC correctly.
+Header:
 
-✔ Scenario 12: UTC timestamps are stored correctly in the database.
-
-✔ Scenario 13: Meeting link is generated with a valid demo URL.
-
-✔ Scenario 14: Booking contains both parent and mentor local times.
-
-✔ Scenario 15: Valid IANA timezones are accepted.
-
-✔ Scenario 16: Invalid timezones are rejected with HTTP 400.
-
-✔ Scenario 17: Daylight saving transitions are handled without fixed offsets.
-
-✔ Scenario 18: Slots crossing midnight in UTC are handled correctly.
-
-✔ Scenario 19: Slots crossing midnight in mentor local time are rejected.
-
-✔ Scenario 20: Concurrent booking requests are handled without double-booking.
-
-✔ Scenario 21: Maximum of two classes per mentor per local calendar day is enforced.
-
-✔ Scenario 22: Exactly 10 active mentors exist in the database.
-
-✔ Scenario 23: Booking lookup by ID returns the populated mentor.
-
-Note: These are the intended test scenarios. Run the test suite to verify which cases currently pass.
-
-
-
-📡 REST API Documentation
-
-1\. Get Mentors
-
-Endpoint: GET /api/mentors
-
-
-
-Response: A list of active mentors, including their timezones, operating hours, subjects, ratings, and bios.
-
-
-
-2\. Get Available Slots
-
-Endpoint: GET /api/slots?date=YYYY-MM-DD&timezone=Area/Location
-
-
-
-Example:
-
-
-
-GET /api/slots?date=2026-10-12&timezone=America/New_York
-
-Response: Available 30-minute intervals, calculated availability, and eligible mentor count.
-
-
-
-3\. Create Booking
-
-Endpoint: POST /api/bookings
-
-
-
-Headers:
-
-
-
+```http
 Content-Type: application/json
+```
 
 Example request body:
 
-
-
+```json
 {
-
-  "parentName": "Sarah Miller",
-
-  "parentEmail": "sarah.m\@example.com",
-
-  "parentPhone": "+1 555-019-2831",
-
-  "childName": "Leo",
-
-  "childAge": 9,
-
-  "subject": "Scratch & Game Development",
-
-  "date": "2026-10-12",
-
-  "time": "09:00",
-
-  "parentTimezone": "America/New_York",
-
-  "notes": "Beginner coder"
-
+  "parentName": "Sarah Miller",
+  "parentEmail": "sarah@example.com",
+  "parentPhone": "+1 555-019-2831",
+  "childName": "Leo",
+  "childAge": 9,
+  "subject": "Scratch & Game Development",
+  "date": "2026-10-12",
+  "time": "09:00",
+  "parentTimezone": "America/New_York",
+  "notes": "Beginner coder"
 }
+```
 
-Expected response (201 Created): Booking details with the assigned mentor, startTimeUTC, endTimeUTC, parentLocalStartTime, mentorLocalStartTime, and meetingLink.
+The field names above are illustrative; confirm that they match the actual API validation.
 
+A successful response may include the assigned mentor, UTC start and end times, parent and mentor local times, and meeting link.
 
+An HTTP `409 Conflict` may be returned when a booking cannot be accommodated, if implemented by the server.
 
-Possible response (409 Conflict): The requested booking cannot be accommodated because of availability or capacity restrictions.
+### 4. Get Booking by ID
 
+**Method:** `GET`
 
+```http
+/api/bookings/:id
+```
 
-4\. Get Booking by ID
+Retrieves booking information by its identifier, potentially including the associated mentor profile.
 
-Endpoint: GET /api/bookings/:id
+### 5. Development Reset and Reseed
 
+**Method:** `POST`
 
+```http
+/api/reset-seed
+```
 
-Response: Booking details and the assigned mentor profile.
+This is a development helper only if the route is implemented in the current codebase.
 
+**Security warning:** A database-reset endpoint must not be publicly accessible in production without appropriate authorization and safeguards.
 
+## 📂 Project Structure
 
-5\. Reset & Re-Seed (Development Helper)
-
-Endpoint: POST /api/reset-seed
-
-
-
-Response: Clears bookings and reseeds the 10 mentors, if implemented as described.
-
-
-
-Warning: Restrict this endpoint to development environments. It should not be publicly accessible in production.
-
-
-
-📂 Project Structure
-
-CodeYoung/
-
+```text
+CodeYoung-Trial-Booking/
 ├── client/
-
-│   ├── src/
-
-│   │   ├── components/
-
-│   │   │   ├── Navbar.jsx              # Sticky header with brand logo and CTAs
-
-│   │   │   ├── HeroSection.jsx         # Hero banner inspired by CodeYoung.com
-
-│   │   │   ├── BookingWizard.jsx       # Four-step interactive trial scheduler
-
-│   │   │   ├── ConfirmationView\.jsx    # Dual-timezone confirmation view
-
-│   │   │   ├── CoursesSection.jsx      # STEM curriculum catalog
-
-│   │   │   ├── MentorsShowcase.jsx     # Global mentor roster
-
-│   │   │   ├── WhyCodeyoung.jsx        # Parent reviews and STEM features
-
-│   │   │   ├── BookingsListModal.jsx   # Booking audit modal
-
-│   │   │   └── Footer.jsx              # Footer and accreditation marks
-
-│   │   ├── utils/
-
-│   │   │   ├── calendar.js             # Google Calendar and ICS generators
-
-│   │   │   └── timezonesList.js        # IANA timezones grouped by region
-
-│   │   ├── App.jsx                     # Application coordinator
-
-│   │   └── index.css                   # Design system styles
-
-│   ├── index.html
-
-│   ├── package.json
-
-│   └── vite.config.js
-
+│   ├── src/
+│   │   ├── components/
+│   │   ├── utils/
+│   │   ├── App.jsx
+│   │   └── index.css
+│   ├── index.html
+│   ├── package.json
+│   └── vite.config.js
 ├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── utils/
+│   │   ├── scripts/
+│   │   └── server.js
+│   ├── test/
+│   └── package.json
+├── package.json
+├── README.md
+├── .gitignore
+├── .env.example
+└── TRANSCRIPT.md
+```
 
-│   ├── src/
+This is a high-level overview. The actual repository may contain additional files or a slightly different structure.
 
-│   │   ├── config/
+## 🤖 AI Development Transcript
 
-│   │   │   └── db.js                   # MongoDB connection
+The repository includes `TRANSCRIPT.md`, which documents the AI-assisted development process, including prompts, responses, troubleshooting, and debugging discussions.
 
-│   │   ├── models/
+Refer to that file for the development transcript accompanying this project.
 
-│   │   │   ├── Mentor.js               # Mentor Mongoose schema
+## 📌 Project Overview
 
-│   │   │   └── Booking.js              # Booking Mongoose schema
+The CodeYoung Trial Class Booking Platform demonstrates a full-stack scheduling workflow involving mentor assignment, timezone-aware availability, booking conflict prevention, database persistence, and calendar integration.
 
-│   │   ├── routes/
+The project is intended to demonstrate practical full-stack development, API design, time and date handling, and testing of booking workflows.
 
-│   │   │   ├── mentorRoutes.js         # Mentor API endpoints
+---
 
-│   │   │   ├── slotRoutes.js           # Slot availability endpoints
+**Developed as a full-stack booking platform project.**
 
-│   │   │   └── bookingRoutes.js        # Booking creation and lookup
-
-│   │   ├── services/
-
-│   │   │   ├── slotService.js          # Availability and quota calculation
-
-│   │   │   └── bookingService.js       # Mentor matching and persistence
-
-│   │   ├── utils/
-
-│   │   │   └── timezone.js             # Timezone conversion engine
-
-│   │   ├── scripts/
-
-│   │   │   └── seed.js                 # Mentor database seeder
-
-│   │   └── server.js                   # Express app entry point
-
-│   ├── test/
-
-│   │   ├── prd_scenarios.test.js       # Booking scenario tests
-
-│   │   └── timezone.test.js            # Timezone and DST tests
-
-│   └── package.json
-
-├── package.json                        # Root orchestration scripts
-
-└── README.md
-
-This structure describes the intended organization. Update it if your actual repository differs.
-
-
-
-🔐 Security Considerations
-
-Keep .env files, credentials, and API keys out of GitHub.
-
-Validate and sanitize incoming API requests.
-
-Add authentication and authorization where required.
-
-Protect database reset and reseed endpoints.
-
-Use database-level concurrency controls when deploying multiple server instances.
-
-Configure production CORS, logging, and error handling.
-
-📌 Project Overview
-
-The CodeYoung Trial Class Booking System demonstrates a full-stack booking workflow with timezone-aware scheduling, global mentor allocation, booking conflict prevention, and calendar integration.

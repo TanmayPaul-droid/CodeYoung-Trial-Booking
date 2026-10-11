@@ -49,7 +49,8 @@ async function checkTransactionSupport() {
 }
 
 /**
- * Creates a trial booking and emails the parent and assigned mentor.
+ * Creates a trial booking and triggers parent/mentor email notifications.
+ * Email delivery does not block the booking response.
  */
 export async function createBooking(bookingPayload) {
   const {
@@ -221,13 +222,13 @@ export async function createBooking(bookingPayload) {
 
     const selectedMentor = eligibleMentors[0].mentor;
 
-    // 8. Generate the existing demo-class link.
+    // 8. Generate the demo-class link.
     const meetingId =
       `${selectedMentor._id.toString().slice(-4)}-` +
       `${Date.now().toString(36)}`;
 
     const meetingLink =
-      `https://code-young-trial-booking.vercel.app/demo-class` +
+      'https://code-young-trial-booking.vercel.app/demo-class' +
       `?meetingId=${encodeURIComponent(meetingId)}`;
 
     const parentLocalStartTime = formatInTZ(
@@ -254,7 +255,7 @@ export async function createBooking(bookingPayload) {
       'yyyy-MM-dd HH:mm (zzz)'
     );
 
-    // 9. Create the confirmed booking.
+    // 9. Create and save the confirmed booking.
     const booking = new Booking({
       mentorId: selectedMentor._id,
       parentName: parentName.trim(),
@@ -287,6 +288,11 @@ export async function createBooking(bookingPayload) {
       booking._id
     ).populate('mentorId');
 
+    if (!populatedBooking || !populatedBooking.mentorId) {
+      throw new Error(
+        'Booking was saved, but assigned mentor details could not be loaded.'
+      );
+    }
   } catch (error) {
     if (session && session.inTransaction()) {
       await session.abortTransaction();
@@ -298,32 +304,32 @@ export async function createBooking(bookingPayload) {
       await session.endSession();
     }
 
+    // Release the booking lock before triggering email notifications.
     releaseLock();
   }
 
-  // 11. Send emails after the booking is saved and the lock is released.
+  // 11. Trigger emails without blocking the booking response.
   // Automated tests must never send real emails.
   if (process.env.NODE_ENV !== 'test') {
-    try {
-      const emailResult = await sendBookingEmails({
-        booking: populatedBooking,
-        mentor: populatedBooking.mentorId,
+    void sendBookingEmails({
+      booking: populatedBooking,
+      mentor: populatedBooking.mentorId,
+    })
+      .then((emailResult) => {
+        console.log('[Booking] Email notification results:', {
+          bookingId: populatedBooking._id.toString(),
+          ...emailResult,
+        });
+      })
+      .catch((emailError) => {
+        console.error(
+          '[Booking] Email notification failed:',
+          emailError.message
+        );
       });
-
-      console.log('[Booking] Email notification results:', {
-        bookingId: populatedBooking._id.toString(),
-        ...emailResult,
-      });
-    } catch (emailError) {
-      // Email failure must not invalidate a confirmed booking.
-      console.error(
-        '[Booking] Email notification failed:',
-        emailError.message
-      );
-    }
   }
 
-  // 12. Preserve the existing API return value.
+  // 12. Return the saved booking immediately.
   return populatedBooking;
 }
 

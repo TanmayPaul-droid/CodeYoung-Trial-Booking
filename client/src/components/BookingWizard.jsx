@@ -169,9 +169,21 @@ fetch(`https://codeyoung-trial-booking-2.onrender.com/api/slots?date=${selectedD
           result.message ||
             'Unable to complete booking. The slot might have just been reserved by another parent. Please choose another slot.'
         );
-        fetch(`/api/slots?date=${selectedDate}&timezone=${encodeURIComponent(parentTimezone)}`)
-          .then((r) => r.json())
-          .then((d) => d.success && setSlots(d.data));
+        
+fetch(
+  `https://codeyoung-trial-booking-2.onrender.com/api/slots?date=${selectedDate}&timezone=${encodeURIComponent(parentTimezone)}`
+)
+  .then((r) => r.json())
+  .then((d) => {
+    if (d.success) {
+      setSlots(d.data);
+      setSelectedSlot(null);
+    }
+  })
+  .catch((err) => {
+    console.error('Failed to refresh available slots:', err);
+  });
+
         setSubmitting(false);
         return;
       }

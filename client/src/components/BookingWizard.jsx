@@ -42,11 +42,11 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
   })();
   const [parentTimezone, setParentTimezone] = useState(defaultTz);
 
-  // Date selection state: next 14 days
+  // Date selection state: next 90 days
   const [upcomingDays] = useState(() => {
     const days = [];
     const today = new Date();
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 90; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
       const iso = d.toISOString().split('T')[0];
@@ -454,7 +454,7 @@ fetch(`https://codeyoung-trial-booking-2.onrender.com/api/slots?date=${selectedD
           <div style={{ marginBottom: '32px' }}>
             <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '14px' }}>
               <Calendar size={15} color="var(--primary)" />
-              <span>Select Date (Next 14 Days)</span>
+              <span>Select Date (Next 90 Days)</span>
             </label>
             <div className="date-chips-row">
               {upcomingDays.map((day) => {

@@ -88,7 +88,9 @@ export default function BookingWizard({ initialSubject, onBookingSuccess }) {
     setSelectedSlot(null);
     setErrorMessage('');
 
-    fetch(`/api/slots?date=${selectedDate}&timezone=${encodeURIComponent(parentTimezone)}`)
+    
+fetch(`https://codeyoung-trial-booking-2.onrender.com/api/slots?date=${selectedDate}&timezone=${encodeURIComponent(parentTimezone)}`)
+
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

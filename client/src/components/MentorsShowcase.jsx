@@ -8,7 +8,7 @@ export default function MentorsShowcase({ onSelectMentor }) {
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
-    fetch('/api/mentors')
+    fetch('https://codeyoung-trial-booking-2.onrender.com/api/mentors')
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {

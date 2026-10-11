@@ -161,10 +161,10 @@ export const seedMentorsData = [
 ];
 
 /**
- * Safely synchronizes the seeded mentor profiles.
+ * Synchronizes mentor profiles without deleting mentors or bookings.
  *
- * Existing bookings are preserved. Existing mentors not included
- * in the seed list are deactivated instead of being deleted.
+ * Intended mentors are upserted first.
+ * Other mentors are deactivated only after all upserts succeed.
  */
 export async function seed() {
   await connectDB();
@@ -172,13 +172,9 @@ export async function seed() {
   try {
     console.log('[Seed] Synchronizing mentor profiles...');
 
-    // Keep existing mentor documents and booking references intact.
-    await Mentor.updateMany(
-      {},
-      { $set: { isActive: false } }
-    );
-
-    // Insert new profiles or update matching emails.
+    // Step 1: Upsert all intended mentors.
+    // Existing documents with matching emails are updated.
+    // Missing documents are inserted.
     for (const mentorData of seedMentorsData) {
       await Mentor.updateOne(
         { email: mentorData.email },
@@ -187,6 +183,23 @@ export async function seed() {
       );
     }
 
+    console.log('[Seed] All intended mentor profiles updated.');
+
+    // Step 2: Deactivate obsolete mentors only after every upsert succeeds.
+    const intendedEmails = seedMentorsData.map(
+      (mentor) => mentor.email
+    );
+
+    const deactivationResult = await Mentor.updateMany(
+      { email: { $nin: intendedEmails } },
+      { $set: { isActive: false } }
+    );
+
+    console.log(
+      `[Seed] Obsolete mentors deactivated: ${deactivationResult.modifiedCount}`
+    );
+
+    // Step 3: Verify active mentors.
     const activeMentors = await Mentor.find({
       isActive: true,
     }).sort({ timezone: 1, name: 1 });
@@ -203,6 +216,19 @@ export async function seed() {
         `${mentor.operatingHours.end}`
       );
     });
+
+    if (
+      activeMentors.length !== seedMentorsData.length ||
+      !intendedEmails.every((email) =>
+        activeMentors.some((mentor) => mentor.email === email)
+      )
+    ) {
+      throw new Error(
+        'Mentor verification failed. Expected exactly 10 intended active mentors.'
+      );
+    }
+
+    console.log('[Seed] Mentor synchronization completed successfully.');
 
     return activeMentors;
   } finally {

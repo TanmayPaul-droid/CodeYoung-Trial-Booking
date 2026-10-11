@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import { Mentor } from '../models/Mentor.js';
 import { Booking } from '../models/Booking.js';
 import { checkMentorAvailabilityForSlot } from './slotService.js';
+import { sendBookingEmails } from './emailService.js';
 
 import {
   parseLocalToUTC,
@@ -48,9 +49,7 @@ async function checkTransactionSupport() {
 }
 
 /**
- * Creates a trial class booking by finding an eligible mentor.
- *
- * If no mentor is available, throws an error with statusCode 409.
+ * Creates a trial booking and emails the parent and assigned mentor.
  */
 export async function createBooking(bookingPayload) {
   const {
@@ -112,9 +111,8 @@ export async function createBooking(bookingPayload) {
     !isValidIANATimezone(parentTimezone)
   ) {
     const error = new Error(
-  'Valid IANA parent timezone is required (received: ' +
-    `${parentTimezone}).`
-);
+      `Valid IANA parent timezone is required (received: ${parentTimezone}).`
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -154,6 +152,7 @@ export async function createBooking(bookingPayload) {
   const releaseLock = await acquireBookingLock();
 
   let session = null;
+  let populatedBooking = null;
 
   try {
     const isTxnSupported = await checkTransactionSupport();
@@ -176,7 +175,6 @@ export async function createBooking(bookingPayload) {
       const error = new Error(
         'We are unable to find any active mentors right now. Please try again later.'
       );
-
       error.statusCode = 503;
       throw error;
     }
@@ -201,18 +199,16 @@ export async function createBooking(bookingPayload) {
       }
     }
 
-    // 6. Return a clear conflict if no mentor can take the class.
+    // 6. Return a conflict if no mentor is available.
     if (eligibleMentors.length === 0) {
       const error = new Error(
         'Sorry, no mentors are available for your selected date and time. Please choose another date or time slot and try again.'
       );
-
       error.statusCode = 409;
       throw error;
     }
 
     // 7. Prefer the least-loaded eligible mentor.
-    // Break ties using mentor ID for deterministic selection.
     eligibleMentors.sort((a, b) => {
       if (a.currentDailyCount !== b.currentDailyCount) {
         return a.currentDailyCount - b.currentDailyCount;
@@ -225,7 +221,7 @@ export async function createBooking(bookingPayload) {
 
     const selectedMentor = eligibleMentors[0].mentor;
 
-    // 8. Generate the meeting link and localized times.
+    // 8. Generate the existing demo-class link.
     const meetingId =
       `${selectedMentor._id.toString().slice(-4)}-` +
       `${Date.now().toString(36)}`;
@@ -263,9 +259,7 @@ export async function createBooking(bookingPayload) {
       mentorId: selectedMentor._id,
       parentName: parentName.trim(),
       parentEmail: parentEmail.trim().toLowerCase(),
-      parentPhone: parentPhone
-        ? parentPhone.trim()
-        : '',
+      parentPhone: parentPhone ? parentPhone.trim() : '',
       childName: childName.trim(),
       childAge: Number(childAge),
       subject: subject.trim(),
@@ -288,12 +282,11 @@ export async function createBooking(bookingPayload) {
       await booking.save();
     }
 
-    // 10. Return the booking with mentor details.
-    const populatedBooking = await Booking.findById(
+    // 10. Populate the saved booking with mentor details.
+    populatedBooking = await Booking.findById(
       booking._id
     ).populate('mentorId');
 
-    return populatedBooking;
   } catch (error) {
     if (session && session.inTransaction()) {
       await session.abortTransaction();
@@ -307,6 +300,31 @@ export async function createBooking(bookingPayload) {
 
     releaseLock();
   }
+
+  // 11. Send emails after the booking is saved and the lock is released.
+  // Automated tests must never send real emails.
+  if (process.env.NODE_ENV !== 'test') {
+    try {
+      const emailResult = await sendBookingEmails({
+        booking: populatedBooking,
+        mentor: populatedBooking.mentorId,
+      });
+
+      console.log('[Booking] Email notification results:', {
+        bookingId: populatedBooking._id.toString(),
+        ...emailResult,
+      });
+    } catch (emailError) {
+      // Email failure must not invalidate a confirmed booking.
+      console.error(
+        '[Booking] Email notification failed:',
+        emailError.message
+      );
+    }
+  }
+
+  // 12. Preserve the existing API return value.
+  return populatedBooking;
 }
 
 /**

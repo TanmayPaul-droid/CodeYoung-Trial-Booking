@@ -4238,35 +4238,7 @@ Explained how to resolve the conflict in VS Code, remove merge markers, retain t
 
 ---
 
-## Session 13 — Creating and describing a GitHub repository
 
-### User
-
-i want to add it to another repository
-
-### Assistant
-
-Explained how to create or select another repository, update `origin`, and push the local `main` branch. Also explained that separate remote names can be used if both repositories should remain configured.
-
-### User
-
-give description for repository
-
-### Assistant
-
-Suggested this repository description:
-
-> A full-stack trial class booking system featuring global mentor assignment, timezone-aware scheduling, DST support, and calendar integration using React, Node.js, Express.js, and MongoDB.
-
-### User
-
-what to write
-
-### Assistant
-
-Recommended placing the short description in GitHub's repository Description field.
-
----
 
 ## Session 14 — Resolving conflicts and publishing UI changes
 

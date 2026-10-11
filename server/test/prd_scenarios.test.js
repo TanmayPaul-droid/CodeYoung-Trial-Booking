@@ -14,34 +14,34 @@ import {
   getLocalDateString,
 } from '../src/utils/timezone.js';
 
-import {
-  checkMentorAvailabilityForSlot,
-} from '../src/services/slotService.js';
+import { checkMentorAvailabilityForSlot } from '../src/services/slotService.js';
 
 import {
   createBooking,
   getBookingById,
 } from '../src/services/bookingService.js';
 
-const TEST_DB_URI =
-  'mongodb://localhost:27017/codeyoung_booking';
+const TEST_DB_URI = 'mongodb://localhost:27017/codeyoung_booking';
+const DEMO_ORIGIN = 'https://code-young-trial-booking.vercel.app';
 
-const DEMO_ORIGIN =
-  'https://code-young-trial-booking.vercel.app';
-
-test('PRD 23 Test Scenarios Suite', async (t) => {
+test('PRD 24 Test Scenarios Suite', async (t) => {
   await mongoose.connect(TEST_DB_URI);
 
+  // WARNING: This clears data in the configured test database.
+  // Never configure TEST_DB_URI to point to your production Atlas database.
   await Booking.deleteMany({});
   await Mentor.deleteMany({});
 
   const mentors = await Mentor.insertMany(seedMentorsData);
 
+  const findIndianMentor = () =>
+    mentors.find((mentor) => mentor.timezone === 'Asia/Kolkata');
+
   t.after(async () => {
     await mongoose.disconnect();
   });
 
-  // Scenario 1: Valid slot booking creates a confirmed record.
+  // Scenario 1: Valid booking creates a confirmed record.
   await t.test(
     'Scenario 1: Valid slot booking creates confirmed record in DB',
     async () => {
@@ -63,28 +63,22 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 2: Mentor operating hours are checked locally.
+  // Scenario 2: A mentor is available during local operating hours.
   await t.test(
     'Scenario 2: Mentor assignment respects operating hours',
     async () => {
-      const yuki = mentors.find(
-        (mentor) => mentor.timezone === 'Asia/Tokyo'
-      );
-
-      assert.ok(yuki);
+      const mentor = findIndianMentor();
+      assert.ok(mentor, 'An Indian mentor must exist in the seed data');
 
       const startUTC = parseLocalToUTC(
         '2026-10-16',
         '10:00',
-        'Asia/Tokyo'
+        mentor.timezone
       );
-
-      const endUTC = new Date(
-        startUTC.getTime() + 30 * 60 * 1000
-      );
+      const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
 
       const result = await checkMentorAvailabilityForSlot(
-        yuki,
+        mentor,
         startUTC,
         endUTC
       );
@@ -93,37 +87,28 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 3: Outside operating hours must be rejected.
+  // Scenario 3: A slot outside operating hours is unavailable.
   await t.test(
     'Scenario 3: Mentor is unavailable outside operating hours',
     async () => {
-      const yuki = mentors.find(
-        (mentor) => mentor.timezone === 'Asia/Tokyo'
-      );
-
-      assert.ok(yuki);
+      const mentor = findIndianMentor();
+      assert.ok(mentor, 'An Indian mentor must exist in the seed data');
 
       const startUTC = parseLocalToUTC(
         '2026-10-16',
         '03:00',
-        'Asia/Tokyo'
+        mentor.timezone
       );
-
-      const endUTC = new Date(
-        startUTC.getTime() + 30 * 60 * 1000
-      );
+      const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
 
       const result = await checkMentorAvailabilityForSlot(
-        yuki,
+        mentor,
         startUTC,
         endUTC
       );
 
       assert.equal(result.isAvailable, false);
-      assert.match(
-        result.reason,
-        /Outside mentor operating hours/
-      );
+      assert.match(result.reason, /Outside mentor operating hours/);
     }
   );
 
@@ -131,24 +116,18 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
   await t.test(
     'Scenario 4: Overlapping booking prevented for same mentor',
     async () => {
-      const aarav = mentors.find(
-        (mentor) => mentor.name === 'Aarav Sharma'
-      );
-
-      assert.ok(aarav);
+      const mentor = mentors.find((item) => item.name === 'Aarav Sharma');
+      assert.ok(mentor);
 
       const startUTC = parseLocalToUTC(
         '2026-10-17',
         '11:00',
-        'Asia/Kolkata'
+        mentor.timezone
       );
-
-      const endUTC = new Date(
-        startUTC.getTime() + 30 * 60 * 1000
-      );
+      const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
 
       await new Booking({
-        mentorId: aarav._id,
+        mentorId: mentor._id,
         parentName: 'Test Parent 1',
         parentEmail: 'tp1@example.com',
         childName: 'Child 1',
@@ -156,12 +135,12 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         subject: 'Robotics',
         startTimeUTC: startUTC,
         endTimeUTC: endUTC,
-        parentTimezone: 'Asia/Kolkata',
+        parentTimezone: mentor.timezone,
         status: 'confirmed',
       }).save();
 
       const exactCheck = await checkMentorAvailabilityForSlot(
-        aarav,
+        mentor,
         startUTC,
         endUTC
       );
@@ -172,16 +151,11 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         /Overlaps with existing confirmed booking/
       );
 
-      const partialStart = new Date(
-        startUTC.getTime() + 15 * 60 * 1000
-      );
-
-      const partialEnd = new Date(
-        partialStart.getTime() + 30 * 60 * 1000
-      );
+      const partialStart = new Date(startUTC.getTime() + 15 * 60 * 1000);
+      const partialEnd = new Date(partialStart.getTime() + 30 * 60 * 1000);
 
       const partialCheck = await checkMentorAvailabilityForSlot(
-        aarav,
+        mentor,
         partialStart,
         partialEnd
       );
@@ -194,22 +168,18 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
   await t.test(
     'Scenario 5: Non-overlapping consecutive bookings allowed',
     async () => {
-      const aarav = mentors.find(
-        (mentor) => mentor.name === 'Aarav Sharma'
-      );
+      const mentor = mentors.find((item) => item.name === 'Aarav Sharma');
+      assert.ok(mentor);
 
       const startUTC = parseLocalToUTC(
         '2026-10-17',
         '11:30',
-        'Asia/Kolkata'
+        mentor.timezone
       );
-
-      const endUTC = new Date(
-        startUTC.getTime() + 30 * 60 * 1000
-      );
+      const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
 
       const result = await checkMentorAvailabilityForSlot(
-        aarav,
+        mentor,
         startUTC,
         endUTC
       );
@@ -218,26 +188,22 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 6: Daily booking limit is enforced.
+  // Scenario 6: The daily limit is enforced.
   await t.test(
     'Scenario 6: Daily limit of 2 classes per mentor enforced',
     async () => {
-      const aarav = mentors.find(
-        (mentor) => mentor.name === 'Aarav Sharma'
-      );
+      const mentor = mentors.find((item) => item.name === 'Aarav Sharma');
+      assert.ok(mentor);
 
       const secondStart = parseLocalToUTC(
         '2026-10-17',
         '11:30',
-        'Asia/Kolkata'
+        mentor.timezone
       );
-
-      const secondEnd = new Date(
-        secondStart.getTime() + 30 * 60 * 1000
-      );
+      const secondEnd = new Date(secondStart.getTime() + 30 * 60 * 1000);
 
       await new Booking({
-        mentorId: aarav._id,
+        mentorId: mentor._id,
         parentName: 'Test Parent 2',
         parentEmail: 'tp2@example.com',
         childName: 'Child 2',
@@ -245,22 +211,19 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         subject: 'Robotics',
         startTimeUTC: secondStart,
         endTimeUTC: secondEnd,
-        parentTimezone: 'Asia/Kolkata',
+        parentTimezone: mentor.timezone,
         status: 'confirmed',
       }).save();
 
       const thirdStart = parseLocalToUTC(
         '2026-10-17',
         '14:00',
-        'Asia/Kolkata'
+        mentor.timezone
       );
-
-      const thirdEnd = new Date(
-        thirdStart.getTime() + 30 * 60 * 1000
-      );
+      const thirdEnd = new Date(thirdStart.getTime() + 30 * 60 * 1000);
 
       const result = await checkMentorAvailabilityForSlot(
-        aarav,
+        mentor,
         thirdStart,
         thirdEnd
       );
@@ -270,7 +233,7 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 7: A different eligible mentor should be assigned.
+  // Scenario 7: A different eligible mentor is assigned.
   await t.test(
     'Scenario 7: Third booking delegates to another eligible mentor',
     async () => {
@@ -288,9 +251,8 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
       assert.ok(booking);
       assert.ok(booking.mentorId);
 
-      const aarav = mentors.find(
-        (mentor) => mentor.name === 'Aarav Sharma'
-      );
+      const aarav = mentors.find((item) => item.name === 'Aarav Sharma');
+      assert.ok(aarav);
 
       assert.notEqual(
         booking.mentorId._id.toString(),
@@ -299,20 +261,22 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 8: Least-loaded eligible mentor is preferred.
+  // Scenario 8: The least-loaded eligible mentor is preferred.
   await t.test(
     'Scenario 8: Least-loaded mentor chosen first',
     async () => {
-      const londonMentors = mentors.filter(
-        (mentor) =>
-          mentor.timezone === 'Europe/London' ||
-          mentor.timezone === 'Europe/Berlin'
+      const indianMentors = mentors.filter(
+        (mentor) => mentor.timezone === 'Asia/Kolkata'
       );
 
-      assert.ok(londonMentors.length >= 2);
+      assert.ok(
+        indianMentors.length >= 2,
+        'At least two Indian mentors are required'
+      );
 
-      const firstMentor = londonMentors[0];
+      const firstMentor = indianMentors[0];
 
+      // Give the first mentor one booking on this date.
       const dummyStart = parseLocalToUTC(
         '2026-10-20',
         '10:00',
@@ -327,9 +291,7 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         childAge: 10,
         subject: 'Math',
         startTimeUTC: dummyStart,
-        endTimeUTC: new Date(
-          dummyStart.getTime() + 30 * 60 * 1000
-        ),
+        endTimeUTC: new Date(dummyStart.getTime() + 30 * 60 * 1000),
         parentTimezone: firstMentor.timezone,
         status: 'confirmed',
       }).save();
@@ -342,19 +304,19 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         subject: 'Coding',
         date: '2026-10-20',
         time: '14:00',
-        parentTimezone: 'Europe/London',
+        parentTimezone: 'Asia/Kolkata',
       });
 
       assert.ok(booking.mentorId);
-
       assert.notEqual(
         booking.mentorId._id.toString(),
-        firstMentor._id.toString()
+        firstMentor._id.toString(),
+        'A less-loaded eligible mentor should be selected'
       );
     }
   );
 
-  // Scenario 9: Booking succeeds when multiple mentors have equal load.
+  // Scenario 9: Booking succeeds when mentors have equal load.
   await t.test(
     'Scenario 9: Deterministic mentor assignment',
     async () => {
@@ -373,7 +335,7 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 10: Parent local time converts to UTC correctly.
+  // Scenario 10: Parent local time converts to UTC.
   await t.test(
     'Scenario 10: Parent local time converted to UTC correctly',
     async () => {
@@ -383,26 +345,16 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         'America/New_York'
       );
 
-      assert.equal(
-        utcDate.toISOString(),
-        '2026-10-12T18:00:00.000Z'
-      );
+      assert.equal(utcDate.toISOString(), '2026-10-12T18:00:00.000Z');
     }
   );
 
-  // Scenario 11: Mentor local time is calculated correctly.
+  // Scenario 11: Mentor local time is calculated from UTC.
   await t.test(
     'Scenario 11: Mentor local time computed from UTC correctly',
     async () => {
-      const utcDate = new Date(
-        '2026-10-12T18:00:00.000Z'
-      );
-
-      const localTime = formatInTZ(
-        utcDate,
-        'Asia/Kolkata',
-        'HH:mm'
-      );
+      const utcDate = new Date('2026-10-12T18:00:00.000Z');
+      const localTime = formatInTZ(utcDate, 'Asia/Kolkata', 'HH:mm');
 
       assert.equal(localTime, '23:30');
     }
@@ -412,17 +364,13 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
   await t.test(
     'Scenario 12: UTC timestamps correctly stored in DB',
     async () => {
-      const booking = await Booking.findOne({
-        childName: 'Sammy',
-      });
+      const booking = await Booking.findOne({ childName: 'Sammy' });
 
       assert.ok(booking);
-
       assert.equal(
         booking.startTimeUTC.toISOString(),
         '2026-10-15T14:00:00.000Z'
       );
-
       assert.equal(
         booking.endTimeUTC.toISOString(),
         '2026-10-15T14:30:00.000Z'
@@ -434,52 +382,31 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
   await t.test(
     'Scenario 13: Meeting link generated with valid demo URL',
     async () => {
-      const booking = await Booking.findOne({
-        childName: 'Sammy',
-      });
+      const booking = await Booking.findOne({ childName: 'Sammy' });
 
       assert.ok(booking, 'Test booking should exist');
       assert.ok(booking.meetingLink, 'Meeting link should exist');
 
       const meetingUrl = new URL(booking.meetingLink);
 
-      assert.equal(
-        meetingUrl.origin,
-        DEMO_ORIGIN,
-        'Meeting link should use the deployed Vercel application'
-      );
-
-      assert.equal(
-        meetingUrl.pathname,
-        '/demo-class',
-        'Meeting link should open the demo-class route'
-      );
-
-      assert.ok(
-        meetingUrl.searchParams.get('meetingId'),
-        'Meeting link should contain a meetingId'
-      );
+      assert.equal(meetingUrl.origin, DEMO_ORIGIN);
+      assert.equal(meetingUrl.pathname, '/demo-class');
+      assert.ok(meetingUrl.searchParams.get('meetingId'));
     }
   );
 
-  // Scenario 14: Both local time representations are returned.
+  // Scenario 14: Parent and mentor local times are returned.
   await t.test(
     'Scenario 14: Booking contains both parent and mentor local times',
     async () => {
-      const booking = await Booking.findOne({
-        childName: 'Sammy',
-      });
+      const booking = await Booking.findOne({ childName: 'Sammy' });
 
       assert.ok(booking);
       assert.ok(booking.parentLocalStartTime);
       assert.ok(booking.parentLocalEndTime);
       assert.ok(booking.mentorLocalStartTime);
       assert.ok(booking.mentorLocalEndTime);
-
-      assert.match(
-        booking.parentLocalStartTime,
-        /2026-10-15/
-      );
+      assert.match(booking.parentLocalStartTime, /2026-10-15/);
     }
   );
 
@@ -487,31 +414,17 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
   await t.test(
     'Scenario 15: Valid IANA timezones accepted',
     async () => {
-      assert.equal(
-        isValidIANATimezone('America/New_York'),
-        true
-      );
-
-      assert.equal(
-        isValidIANATimezone('Europe/London'),
-        true
-      );
-
-      assert.equal(
-        isValidIANATimezone('Asia/Kolkata'),
-        true
-      );
+      assert.equal(isValidIANATimezone('America/New_York'), true);
+      assert.equal(isValidIANATimezone('Europe/London'), true);
+      assert.equal(isValidIANATimezone('Asia/Kolkata'), true);
     }
   );
 
-  // Scenario 16: Invalid IANA timezones are rejected.
+  // Scenario 16: Invalid timezones are rejected.
   await t.test(
     'Scenario 16: Invalid timezones rejected',
     async () => {
-      assert.equal(
-        isValidIANATimezone('Mars/Olympus_Mons'),
-        false
-      );
+      assert.equal(isValidIANATimezone('Mars/Olympus_Mons'), false);
 
       await assert.rejects(
         () =>
@@ -539,7 +452,6 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         '12:00',
         'America/New_York'
       );
-
       const winter = parseLocalToUTC(
         '2026-11-15',
         '12:00',
@@ -551,38 +463,30 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 18: UTC date changes are handled correctly.
+  // Scenario 18: Local dates across UTC midnight are handled.
   await t.test(
     'Scenario 18: Slots across midnight in UTC handled correctly',
     async () => {
-      const utcDate = new Date(
-        '2026-10-12T23:45:00.000Z'
-      );
-
-      const tokyoDate = getLocalDateString(
-        utcDate,
-        'Asia/Tokyo'
-      );
+      const utcDate = new Date('2026-10-12T23:45:00.000Z');
+      const tokyoDate = getLocalDateString(utcDate, 'Asia/Tokyo');
 
       assert.equal(tokyoDate, '2026-10-13');
     }
   );
 
-  // Scenario 19: Slots crossing the mentor's midnight are rejected.
+  // Scenario 19: Slots crossing a mentor's midnight are rejected.
   await t.test(
     'Scenario 19: Slot spanning mentor midnight is rejected',
     async () => {
-      const mentor = mentors[0];
+      const mentor = findIndianMentor();
+      assert.ok(mentor);
 
       const startUTC = parseLocalToUTC(
         '2026-10-12',
         '23:45',
         mentor.timezone
       );
-
-      const endUTC = new Date(
-        startUTC.getTime() + 30 * 60 * 1000
-      );
+      const endUTC = new Date(startUTC.getTime() + 30 * 60 * 1000);
 
       const result = await checkMentorAvailabilityForSlot(
         mentor,
@@ -591,17 +495,17 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
       );
 
       assert.equal(result.isAvailable, false);
-      assert.equal(
-        result.reason,
-        'Crosses mentor midnight boundary'
-      );
+      assert.equal(result.reason, 'Crosses mentor midnight boundary');
     }
   );
 
-  // Scenario 20: Concurrent bookings do not double-book a mentor.
+  // Scenario 20: Concurrent bookings should use different eligible mentors.
   await t.test(
     'Scenario 20: Concurrent booking requests serialize safely',
     async () => {
+      // 14:00 IST overlaps operating hours across all five regions.
+      // This avoids the previous 08:00 New York time, which left too few
+      // mentors available for three simultaneous bookings.
       const promises = [1, 2, 3].map((number) =>
         createBooking({
           parentName: `Concurrent Parent ${number}`,
@@ -610,8 +514,8 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
           childAge: 9,
           subject: 'Coding',
           date: '2026-10-28',
-          time: '08:00',
-          parentTimezone: 'America/New_York',
+          time: '14:00',
+          parentTimezone: 'Asia/Kolkata',
         })
       );
 
@@ -619,8 +523,8 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
 
       assert.equal(results.length, 3);
 
-      const mentorIds = results.map(
-        (booking) => booking.mentorId._id.toString()
+      const mentorIds = results.map((booking) =>
+        booking.mentorId._id.toString()
       );
 
       assert.equal(
@@ -631,18 +535,15 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 21: A mentor never exceeds two daily bookings.
+  // Scenario 21: Confirmed bookings never exceed the daily limit.
   await t.test(
     'Scenario 21: Enforces maximum two classes per mentor per day',
     async () => {
-      const elena = mentors.find(
-        (mentor) => mentor.name === 'Elena Rodriguez'
-      );
-
-      assert.ok(elena);
+      const mentor = mentors.find((item) => item.name === 'Aarav Sharma');
+      assert.ok(mentor, 'Aarav Sharma must exist in the test data');
 
       const bookings = await Booking.find({
-        mentorId: elena._id,
+        mentorId: mentor._id,
         status: 'confirmed',
       });
 
@@ -651,11 +552,10 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
       for (const booking of bookings) {
         const date = getLocalDateString(
           booking.startTimeUTC,
-          elena.timezone
+          mentor.timezone
         );
 
-        countsByDate[date] =
-          (countsByDate[date] || 0) + 1;
+        countsByDate[date] = (countsByDate[date] || 0) + 1;
 
         assert.ok(
           countsByDate[date] <= 2,
@@ -665,14 +565,11 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 22: Ten active mentors are seeded.
+  // Scenario 22: Exactly ten active mentors are seeded.
   await t.test(
     'Scenario 22: Exactly 10 active mentors in database',
     async () => {
-      const count = await Mentor.countDocuments({
-        isActive: true,
-      });
-
+      const count = await Mentor.countDocuments({ isActive: true });
       assert.equal(count, 10);
     }
   );
@@ -682,7 +579,6 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     'Scenario 23: Lookup booking by ID returns populated mentor',
     async () => {
       const booking = await Booking.findOne();
-
       assert.ok(booking);
 
       const found = await getBookingById(booking._id);
@@ -693,37 +589,20 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
     }
   );
 
-  // Scenario 24: A third booking must not be assigned to a full mentor.
+  // Scenario 24: A full mentor cannot receive a third booking that day.
   await t.test(
     'Scenario 24: Third booking is assigned to another eligible mentor',
     async () => {
-      const mentor = mentors.find(
-        (m) => m.name === 'Aarav Sharma'
-      );
-
+      const mentor = mentors.find((item) => item.name === 'Aarav Sharma');
       assert.ok(mentor, 'Aarav Sharma must exist in the test data');
 
       const date = '2026-10-30';
       const timezone = mentor.timezone;
       const durationMs = 30 * 60 * 1000;
 
-      const firstStart = parseLocalToUTC(
-        date,
-        '10:00',
-        timezone
-      );
-
-      const secondStart = parseLocalToUTC(
-        date,
-        '11:00',
-        timezone
-      );
-
-      const thirdStart = parseLocalToUTC(
-        date,
-        '12:00',
-        timezone
-      );
+      const firstStart = parseLocalToUTC(date, '10:00', timezone);
+      const secondStart = parseLocalToUTC(date, '11:00', timezone);
+      const thirdStart = parseLocalToUTC(date, '12:00', timezone);
 
       // Create two confirmed, non-overlapping bookings for this mentor.
       await Booking.insertMany([
@@ -735,9 +614,7 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
           childAge: 10,
           subject: 'Coding',
           startTimeUTC: firstStart,
-          endTimeUTC: new Date(
-            firstStart.getTime() + durationMs
-          ),
+          endTimeUTC: new Date(firstStart.getTime() + durationMs),
           parentTimezone: timezone,
           status: 'confirmed',
         },
@@ -749,33 +626,22 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
           childAge: 10,
           subject: 'Coding',
           startTimeUTC: secondStart,
-          endTimeUTC: new Date(
-            secondStart.getTime() + durationMs
-          ),
+          endTimeUTC: new Date(secondStart.getTime() + durationMs),
           parentTimezone: timezone,
           status: 'confirmed',
         },
       ]);
 
-      // A mentor with two confirmed bookings must be unavailable for a third.
       const availability = await checkMentorAvailabilityForSlot(
         mentor,
         thirdStart,
         new Date(thirdStart.getTime() + durationMs)
       );
 
-      assert.equal(
-        availability.isAvailable,
-        false,
-        'A mentor with two confirmed bookings must be unavailable'
-      );
+      assert.equal(availability.isAvailable, false);
+      assert.match(availability.reason, /Daily class limit reached/);
 
-      assert.match(
-        availability.reason,
-        /Daily class limit reached/
-      );
-
-      // The booking service should select another eligible mentor.
+      // The booking service should choose a different eligible mentor.
       const booking = await createBooking({
         parentName: 'Third Booking Parent',
         parentEmail: 'third-booking-parent@example.com',
@@ -787,15 +653,8 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         parentTimezone: timezone,
       });
 
-      assert.ok(
-        booking,
-        'A booking should be created if another mentor is available'
-      );
-
-      assert.ok(
-        booking.mentorId,
-        'The new booking must have a mentor'
-      );
+      assert.ok(booking, 'A booking should be created');
+      assert.ok(booking.mentorId, 'The booking must have an assigned mentor');
 
       assert.notEqual(
         booking.mentorId._id.toString(),
@@ -803,18 +662,13 @@ test('PRD 23 Test Scenarios Suite', async (t) => {
         'The full mentor must not receive the third booking'
       );
 
-      // Verify the original mentor still has exactly two bookings that day.
       const dayBookings = await Booking.find({
         mentorId: mentor._id,
         status: 'confirmed',
       });
 
       const sameDayBookings = dayBookings.filter(
-        (item) =>
-          getLocalDateString(
-            item.startTimeUTC,
-            timezone
-          ) === date
+        (item) => getLocalDateString(item.startTimeUTC, timezone) === date
       );
 
       assert.equal(

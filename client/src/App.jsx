@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+
 import Navbar from './components/Navbar.jsx';
 import HeroSection from './components/HeroSection.jsx';
 import BookingWizard from './components/BookingWizard.jsx';
@@ -14,18 +15,19 @@ import Footer from './components/Footer.jsx';
 import DemoClass from './components/DemoClass.jsx';
 
 export default function App() {
+  // Read the current URL path.
+  const pathname = window.location.pathname;
+
+  // Render the demo classroom when its URL is opened directly.
+  // The meetingId query parameter is preserved in the URL.
+  if (pathname === '/demo-class' || pathname === '/demo-class/') {
+    return <DemoClass />;
+  }
+
   const [view, setView] = useState('landing');
   const [confirmedBooking, setConfirmedBooking] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('');
   const [isBookingsModalOpen, setIsBookingsModalOpen] = useState(false);
-
-  // Handle the demo classroom URL without disrupting the booking app.
-  const isDemoClass = window.location.pathname === '/demo-class';
-
-  // Show the demo classroom for /demo-class URLs.
-  if (isDemoClass) {
-    return <DemoClass />;
-  }
 
   // Scroll to the booking wizard.
   const scrollToBooking = (subjectName = '') => {
@@ -38,39 +40,43 @@ export default function App() {
     }
 
     setTimeout(() => {
-      const el = document.getElementById('booking-wizard-section');
+      const element = document.getElementById('booking-wizard-section');
 
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
       }
     }, 50);
   };
 
+  // Handle a successful booking.
   const handleBookingSuccess = (bookingData) => {
     setConfirmedBooking(bookingData);
     setView('confirmation');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Start another booking.
   const handleBookAnother = () => {
     setConfirmedBooking(null);
     setView('landing');
 
     setTimeout(() => {
-      const el = document.getElementById('booking-wizard-section');
+      const element = document.getElementById('booking-wizard-section');
 
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth' });
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth' });
       }
     }, 50);
   };
 
+  // Return to the homepage.
   const handleGoHome = () => {
     setConfirmedBooking(null);
     setView('landing');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Render the main application.
   return (
     <div className="app-container">
       <Navbar
@@ -102,7 +108,7 @@ export default function App() {
           <HeroSection onStartBooking={() => scrollToBooking()} />
 
           <div style={{ padding: '20px 0 60px' }}>
-            <div className="content-wrapper">
+            <div className="content-wrapper" id="booking-wizard-section">
               <BookingWizard
                 initialSubject={selectedSubject}
                 onBookingSuccess={handleBookingSuccess}
@@ -165,8 +171,7 @@ export default function App() {
                   }}
                 >
                   Turn the 3D interactive wheel or scroll to browse
-                  real capstone projects created by young coders aged
-                  5–17.
+                  capstone projects created by young coders aged 5–17.
                 </p>
               </div>
 
@@ -210,9 +215,8 @@ export default function App() {
                     color: 'var(--text-body)',
                   }}
                 >
-                  Everything you need to know about our trial
-                  classes, subscription plans, and secure payment
-                  methods.
+                  Everything you need to know about our trial classes,
+                  subscription plans, and secure payment methods.
                 </p>
               </div>
 

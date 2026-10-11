@@ -72,7 +72,7 @@ Open a second terminal and run:
 npm run dev:client
 ```
 
-Open the local URL printed by Vite, typically http://localhost:5173/.
+Open the local URL printed by Vite, typically http://localhost:3000/.
 
 ### 6. Run tests
 

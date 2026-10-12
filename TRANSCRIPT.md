@@ -2639,3 +2639,308 @@ MAILJET_SECRET_KEY
 EMAIL_FROM
 
 ---
+
+# Debugging Transcript: Replacing the Hardcoded Mentor Card
+
+## &#x20;Problem 1: The Homepage Displayed a Mentor Missing from the Database
+
+### User's problem
+
+The homepage hero section displayed a promotional mentor card containing:
+
+- Name: Emily Watson
+- Specialization: AI and Python
+- Rating: 4.97
+- Sessions: 280+
+- Trial project: Building an AI Chatbot from Scratch
+
+However, Emily Watson was not included in the actual mentor list stored in the database.
+
+The backend contained 10 sample mentors, including Aarav Sharma, Priya Sharma, Rohan Das, Ananya Iyer, Vikram Patel, Meera Nair, Chinedu Okafor, Dewi Putri, Wanjiku Kamau, and Miguel Santos.
+
+### Root cause
+
+The homepage card was hardcoded inside `client/src/components/HeroSection.jsx`. Its mentor information was static JSX rather than data retrieved from the backend.
+
+As a result, changes to the database did not automatically update the homepage preview.
+
+### Solution
+
+The hero section was modified to support dynamically loading mentor data from the backend API.
+
+The implementation uses:
+
+- React state to store mentor information and loading status.
+- `useEffect` to request mentor data when the component mounts.
+- The backend mentors endpoint to retrieve active mentor records.
+- A fallback avatar when a mentor profile does not have a usable image.
+- A loading or unavailable state if no active mentor can be retrieved.
+
+The mentor card can then display the selected mentor's actual name, avatar, subjects, and rating.
+
+**File modified:** `client/src/components/HeroSection.jsx`
+
+---
+
+## Problem 2: Vite Was Not Recognized
+
+### Observed error
+
+When running the frontend development server, the terminal displayed:
+
+`'vite' is not recognized as an internal or external command, operable program or batch file.`
+
+### Root cause
+
+The frontend dependencies had not yet been installed in the client project directory, so the local Vite executable was unavailable.
+
+### Solution
+
+The terminal was moved into the frontend directory:
+
+```powershell
+cd C:\Users\tanmaypaul\Downloads\CodeYoung-GitHub\client
+```
+
+The frontend dependencies were installed:
+
+```powershell
+npm install
+```
+
+After installation, the Vite development server could be started using:
+
+```powershell
+npm run dev
+```
+
+The installation reported seven high-severity audit findings. These findings were separate from the missing-Vite issue and did not, by themselves, establish that the application could not run.
+
+---
+
+## Problem 3: MongoDB Connection Refused
+
+### Observed error
+
+When starting the backend, the terminal displayed:
+
+```text
+[Database] MongoDB connection error:
+connect ECONNREFUSED ::1:27017
+connect ECONNREFUSED 127.0.0.1:27017
+```
+
+### Root cause
+
+The backend was attempting to connect to a local MongoDB server on port 27017. No MongoDB server was accepting connections at that address.
+
+The project was intended to use MongoDB Atlas instead.
+
+### Solution
+
+The backend environment configuration was updated to use the Atlas connection string.
+
+Example configuration:
+
+```env
+PORT=5000
+MONGODB_URI=mongodb+srv://<username>:<password>@<cluster-host>/<database>?retryWrites=true&w=majority
+```
+
+The placeholders must be replaced with the actual Atlas credentials and connection details. The password should not be committed to GitHub.
+
+The backend was then restarted from the `server` directory:
+
+```powershell
+cd C:\Users\tanmaypaul\Downloads\CodeYoung-GitHub\server
+npm install
+npm run dev
+```
+
+### Successful result
+
+The terminal subsequently displayed:
+
+```text
+[Database] MongoDB connected successfully
+CodeYoung API Server running on http://localhost:5000
+```
+
+This confirmed that the backend connected to MongoDB Atlas and started listening on port 5000.
+
+---
+
+## Problem 4: Verifying the Mentor API
+
+### Test performed
+
+The mentors endpoint was opened directly in the browser:
+
+```text
+http://localhost:5000/api/mentors
+```
+
+### Observed result
+
+The endpoint returned a JSON response containing:
+
+- `success: true`
+- `count: 10`
+- `data`: an array of 10 mentor records
+
+The records included mentor names, email addresses, timezones, operating hours, avatars, subjects, ratings, experience, and active status.
+
+For example, the API returned Aarav Sharma with:
+
+- Timezone: `Asia/Kolkata`
+- Rating: `4.98`
+- Review count: `312`
+- Subjects: Python Programming, Robotics & Arduino, Scratch Coding
+- Active status: `true`
+
+### Conclusion
+
+The backend API and database contained the expected mentor records. The issue was therefore in the homepage's hardcoded content and data-loading implementation, rather than the absence of mentor records in the database.
+
+---
+
+## Problem 5: Incorrect Frontend Port and Vite Command Usage
+
+### Observed behavior
+
+The project used different ports during debugging:
+
+- Backend API: port 5000
+- Frontend: port 3000 in the Vite configuration
+- Frontend: port 5173 when Vite was started with its default port
+
+The terminal also displayed an error when an unsupported command-line argument was used:
+
+```text
+CACError: Unknown option: '3000'
+```
+
+### Root cause
+
+Vite's CLI arguments were being passed in an incorrect format. Additionally, the configured frontend port and the port printed by the running development server were not always the same.
+
+### Solution
+
+The frontend was started from the `client` directory with:
+
+```powershell
+npm run dev
+```
+
+The Vite configuration specified the intended frontend port and API proxy:
+
+```javascript
+server: {
+  port: 3000,
+  proxy: {
+    '/api': {
+      target: 'http://localhost:5000',
+      changeOrigin: true,
+    },
+  },
+},
+```
+
+If a port needs to be explicitly overridden, the supported syntax is:
+
+```powershell
+npm run dev -- --port 3000
+```
+
+The `--root .` option was also used to explicitly identify the current directory as the Vite project root:
+
+```powershell
+npm run dev -- --root . --force
+```
+
+The `--force` option makes Vite re-optimize dependencies; it is not a permanent fix for an incorrect project root or missing entry point.
+
+### Important clarification
+
+The browser displayed an HTTP 404 at `http://localhost:5173/` during one test. The screenshot alone did not establish the exact cause of that response. After the project was started from the correct client directory and port 3000, the homepage loaded successfully.
+
+## &#x20;Problem 6: Checking the HTML Entry Point
+
+### File inspected
+
+`client/index.html`
+
+The file contained the expected React root element and module entry point:
+
+```html
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+```
+
+### Conclusion
+
+The HTML entry point was correctly structured for a standard Vite React application.
+
+No HTML change was required to fix the hardcoded mentor card.
+
+## &#x20;Problem 7: Updating the Mentor Seed Data
+
+### File inspected
+
+`server/src/scripts/seed.js`
+
+The seed script defined 10 intended mentor profiles and used MongoDB upserts to insert or update them.
+
+The script also deactivated mentors whose email addresses were not included in the intended seed list, after the upserts succeeded.
+
+### Solution and verification
+
+The API was checked after the Atlas connection was established. It returned 10 mentor records, matching the intended seed list.
+
+The seed script was designed to avoid deleting existing mentor documents or bookings, while synchronizing the intended mentor profiles.
+
+The database API response provided evidence that the expected mentor data was available to the frontend.
+
+---
+
+## Final Result: The Correct Mentor Appeared on the Homepage
+
+After the frontend was started correctly and the dynamic mentor card was implemented, the homepage displayed the following information:
+
+| Field          | Displayed value                                        |
+| -------------- | ------------------------------------------------------ |
+| Mentor name    | Aarav Sharma                                           |
+| Specialization | Python Programming, Robotics & Arduino, Scratch Coding |
+| Rating         | 4.98                                                   |
+| Review count   | 312                                                    |
+| Status         | Active Mentor                                          |
+| Trial duration | 30 minutes                                             |
+
+The screenshot confirmed that the homepage no longer displayed the original hardcoded Emily Watson card. Instead, it displayed Aarav Sharma, whose profile existed in the API response.
+
+### Final verification status
+
+- MongoDB Atlas connection: successful
+- Backend server on port 5000: running
+- Mentors endpoint: returned 10 records
+- Frontend on port 3000: loaded successfully
+- Homepage mentor card: displaying Aarav Sharma
+- Booking workflow: still requires a separate end-to-end test
+- Production deployment: requires verification after pushing and deploying the changes
+
+---
+
+## Lessons Learned
+
+1. Hardcoded promotional data can become inconsistent with database records.
+2. API-backed UI components should handle loading, empty, and error states.
+3. Environment variables must point to the intended database.
+4. Frontend and backend ports must be configured consistently.
+5. Browser API tests help isolate backend problems from frontend rendering problems.
+6. Seed scripts should be run deliberately because they can modify database records.
+7. Database credentials must be kept out of source control.
+
+**Final outcome:** The local CodeYoung homepage was successfully updated to display an actual mentor profile returned by the backend instead of the obsolete hardcoded mentor. The final screenshot confirmed the correction.
+

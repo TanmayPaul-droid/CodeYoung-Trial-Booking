@@ -2406,4 +2406,236 @@ Confirmed that the push had completed and provided the repository link:
 
 https://github.com/TanmayPaul-droid/CodeYoung-Trial-Booking
 
+Email Debugging Transcript — CodeYoung Trial Booking
+1. Initial problem: Emails were going only to the Resend test address
+User: My booking system is sending emails, but they are going to my own email address instead of the actual parent and mentor.
+Assistant: The email service code uses dynamic recipients:
+to: [booking.parentEmail]
+
+
+for the parent, and:
+to: [mentor.email]
+
+
+for the assigned mentor.
+The code's recipient selection was correct. The problem was identified in the Resend account's testing restrictions.
+Error found in Render logs:
+You can only send testing emails to your own email address
+(paultanmay40@gmail.com).
+
+To send emails to other recipients, please verify a domain
+at resend.com/domains and change the from address.
+
+
+Solution: Since a verified custom domain was not available, we decided to try Mailjet as the email provider instead.
+
+2. Migrating the email service from Resend to Mailjet
+User: I don't have a domain. Can we use another email service?
+Assistant: We switched the email implementation to Mailjet's Send API v3.1.
+The changes included:
+- Removing import { Resend } from 'resend';
+- Replacing Resend's email-sending method with a fetch() request to Mailjet.
+- Authenticating using MAILJET_API_KEY and MAILJET_SECRET_KEY.
+- Keeping the existing parent and mentor email templates.
+- Preserving HTML escaping, meeting-link validation, class-time formatting, and separate recipient addresses.
+The new service used this endpoint:
+const response = await fetch('https://api.mailjet.com/v3.1/send', {
+  method: 'POST',
+  headers: {
+    Authorization:
+      'Basic ' +
+      Buffer.from(`${apiKey}:${secretKey}`).toString('base64'),
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+  body: JSON.stringify(payload),
+});
+
+
+This uses Node.js built-in fetch and Buffer; no additional HTTP package was required.
+
+3. Configuring environment variables on Render
+User: I've added the Mailjet credentials to Render. Is everything okay?
+Assistant: The environment variables needed to match the new implementation.
+Variable	Purpose
+MAILJET_API_KEY	Mailjet API key
+MAILJET_SECRET_KEY	Corresponding Mailjet secret
+EMAIL_FROM	Sender address authorized in Mailjet
+The intended sender configuration was:
+EMAIL_FROM=CodeYoung <paultanmay40@gmail.com>
+
+
+The old RESEND_API_KEY was no longer required by the Mailjet implementation.
+Important: Updating environment variables alone does not replace old code in the deployed service. The updated file must also be committed to GitHub and deployed through Render.
+
+4. First deployment issue: Render was still running the old Resend implementation
+User: Render logs still show an email error.
+Render log:
+[Booking] Email notification failed: RESEND_API_KEY is not configured.
+
+
+Assistant: This showed that the deployed booking flow was still executing code that required Resend.
+We checked the local file:
+server/src/services/emailService.js
+
+
+and replaced the old Resend implementation with the Mailjet version.
+The changes were saved, committed, and pushed to the main branch. Render then deployed the updated backend.
+The relevant Git commands were:
+git add server/src/services/emailService.js
+git commit -m "Switch booking email service to Mailjet"
+git push origin main
+
+
+The key lesson was to verify the deployed code version, not just the local VS Code file.
+
+5. Second error: Mailjet returned HTTP 401
+User: Mailjet is now being called, but emails are still failing.
+Render log:
+HTTP status: 401
+
+API key authentication/authorization failure.
+You may be unauthorized to access the API or your API key
+may be expired.
+
+
+Assistant: This was an authentication failure, not a problem with the email templates.
+We inspected Mailjet's API Key Management page. The primary API key was present, and its settings menu offered Reset Secret Key.
+The solution was to:
+1. Reset the Mailjet secret key.
+2. Securely save the replacement secret.
+3. Update MAILJET_SECRET_KEY in Render.
+4. Ensure MAILJET_API_KEY remained paired with the corresponding primary API key.
+5. Save the environment variables and wait for Render to restart the service.
+The dashboard also displayed a daily sending-limit warning. Resetting the secret addressed the credential issue, but it did not guarantee that account-level sending restrictions would be removed.
+Result: Subsequent logs showed that the service could communicate with Mailjet and receive recipient-level responses. The HTTP 401 error was no longer the immediate problem.
+
+6. Third error: Mailjet accepted the API request, but our code reported rejected recipients
+User: The logs now show recipient rejection messages.
+Render log:
+[Email] Parent email: Some recipients were rejected.
+[Email] Mentor email: Some recipients were rejected.
+
+[Booking] Email notification results: {
+  parentSent: false,
+  mentorSent: false
+}
+
+
+The detailed response contained fields like these for both recipients:
+{
+  "MessageUUID": "message-uuid",
+  "MessageID": 123456789,
+  "MessageHref": "https://api.mailjet.com/v3/REST/message/123456789"
+}
+
+
+Assistant: The issue was in our own recipient-validation logic. The code incorrectly expected:
+recipient?.Message === 'success'
+
+
+That was not the appropriate success check for the response fields returned by Mailjet in these logs.
+We replaced that condition with a check for the recipient's message identifiers:
+const recipientResults = mailResult?.To;
+
+if (
+  !Array.isArray(recipientResults) ||
+  recipientResults.length !== message.to.length
+) {
+  console.error(
+    `[Email] ${label}: Unexpected recipient results.`,
+    JSON.stringify(result)
+  );
+  return false;
+}
+
+const failedRecipients = recipientResults.filter(
+  (recipient) =>
+    recipient?.MessageID == null ||
+    recipient?.MessageUUID == null
+);
+
+if (failedRecipients.length > 0) {
+  console.error(
+    `[Email] ${label}: Missing Mailjet message identifiers.`,
+    JSON.stringify(failedRecipients)
+  );
+  return false;
+}
+
+console.log(
+  `[Email] ${label} accepted by Mailjet:`,
+  recipientResults.map((recipient) => ({
+    email: recipient.Email,
+    messageId: recipient.MessageID,
+  }))
+);
+
+return true;
+
+
+This fixed the false-negative result for the response format observed in the logs.
+The updated file was saved, committed, pushed, and deployed again.
+
+7. Final result: Both booking emails accepted by Mailjet
+User: The latest Render logs show this. Is it working now?
+Render log:
+[Email Debug] Parent recipient: tanmayy40paulgmail.com
+[Email Debug] Mentor recipient: chinedu.okafor@codeyoung.com
+[Email Debug] Sender: CodeYoung <paultanmay40@gmail.com>
+
+[Email] Mentor email accepted by Mailjet:
+[
+  {
+    email: 'chinedu.okafor@codeyoung.com',
+    messageId: 1152921545489191400
+  }
+]
+
+[Email] Parent email accepted by Mailjet:
+[
+  {
+    email: 'tanmayy40paulgmail.com',
+    messageId: 1152921545489191400
+  }
+]
+
+[Booking] Email notification results: {
+  bookingId: '...',
+  parentSent: true,
+  mentorSent: true
+}
+
+
+The log above is a condensed representation of the final screenshot; the booking ID is omitted.
+Assistant: Both messages were accepted by Mailjet, and the application returned:
+{
+  parentSent: true,
+  mentorSent: true
+}
+
+
+This confirms that the application-side email-sending flow succeeded. It does not independently confirm final inbox delivery.
+The final verification steps were:
+1. Check the parent's inbox and spam folder.
+2. Check the mentor's inbox and spam folder.
+3. Open Mailjet's email activity logs and confirm each message's delivery status.
+8. Summary of errors and fixes
+Problem	Root cause	Solution
+Resend only allowed the test address	Resend testing restrictions	Migrated to Mailjet
+RESEND_API_KEY is not configured	Old implementation still deployed	Pushed and deployed the Mailjet implementation
+HTTP 401 authentication failure	Mailjet credentials were rejected	Reset the secret and update Render
+Recipient emails reported as rejected	Incorrect response-validation condition	Validated the Mailjet response identifiers
+Final parentSent: false, mentorSent: false	Application treated accepted messages as failures	Corrected the recipient-validation logic
+Final parentSent: true, mentorSent: true	—	Both messages accepted by Mailjet
+9. Files and environment variables involved
+Modified file
+server/src/services/emailService.js
+
+
+Render environment variables
+MAILJET_API_KEY
+MAILJET_SECRET_KEY
+EMAIL_FROM
+
 ---

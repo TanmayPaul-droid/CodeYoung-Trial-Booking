@@ -66,7 +66,7 @@ Run the test suite to determine which scenarios currently pass.
 | Backend           | Node.js, Express.js                        |
 | Database          | MongoDB, Mongoose                          |
 | Date and Time     | date-fns, date-fns-tz                      |
-| Email Integration | Nodemailer, Resend                         |
+| Email Integration | Mailjet                       |
 | Testing           | Node.js Test Runner, MongoDB Memory Server |
 | Version Control   | Git, GitHub                                |
 
@@ -124,8 +124,9 @@ For example, if the backend reads `server/.env`, create that file with the follo
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung_booking
 NODE_ENV=development
-RESEND_API_KEY=your_resend_api_key_here
-EMAIL_FROM=your_verified_sender@example.com
+MAILJET_API_KEY=your_mailjet_api_key
+MAILJET_SECRET_KEY=your_mailjet_secret_key
+EMAIL_FROM=CodeYoung <your_authorized_sender@example.com>
 ```
 
 These are example values. Check the backend source code to confirm the exact required environment variable names and defaults.

@@ -140,30 +140,44 @@ async function sendOneEmail(message, label) {
       return false;
     }
 
-    const recipientResults = mailResult?.To;
+    
+const recipientResults = mailResult?.To;
 
-    if (
-      !Array.isArray(recipientResults) ||
-      recipientResults.length !== message.to.length
-    ) {
-      console.error(
-        `[Email] ${label}: Unexpected recipient results.`,
-        JSON.stringify(result)
-      );
-      return false;
-    }
+if (
+  !Array.isArray(recipientResults) ||
+  recipientResults.length !== message.to.length
+) {
+  console.error(
+    `[Email] ${label}: Unexpected recipient results.`,
+    JSON.stringify(result)
+  );
+  return false;
+}
 
-    const failedRecipients = recipientResults.filter(
-      (recipient) => recipient?.Message !== 'success'
-    );
+const failedRecipients = recipientResults.filter(
+  (recipient) =>
+    recipient?.MessageID == null ||
+    recipient?.MessageUUID == null
+);
 
-    if (failedRecipients.length > 0) {
-      console.error(
-        `[Email] ${label}: Some recipients were rejected.`,
-        JSON.stringify(failedRecipients)
-      );
-      return false;
-    }
+if (failedRecipients.length > 0) {
+  console.error(
+    `[Email] ${label}: Missing Mailjet message identifiers.`,
+    JSON.stringify(failedRecipients)
+  );
+  return false;
+}
+
+console.log(
+  `[Email] ${label} accepted by Mailjet:`,
+  recipientResults.map((recipient) => ({
+    email: recipient.Email,
+    messageId: recipient.MessageID,
+  }))
+);
+
+return true;
+
 
     console.log(`[Email] ${label} accepted by Mailjet.`);
     return true;

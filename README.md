@@ -124,6 +124,8 @@ For example, if the backend reads `server/.env`, create that file with the follo
 PORT=5000
 MONGODB_URI=mongodb://127.0.0.1:27017/codeyoung_booking
 NODE_ENV=development
+RESEND_API_KEY=your_resend_api_key_here
+EMAIL_FROM=your_verified_sender@example.com
 ```
 
 These are example values. Check the backend source code to confirm the exact required environment variable names and defaults.

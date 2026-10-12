@@ -93,6 +93,9 @@ export async function sendBookingEmails({ booking, mentor }) {
     process.env.EMAIL_FROM || 'CodeYoung <onboarding@resend.dev>';
 
   const resend = new Resend(process.env.RESEND_API_KEY);
+  console.log('[Email Debug] Parent recipient:', booking.parentEmail);
+  console.log('[Email Debug] Mentor recipient:', mentor.email);
+  console.log('[Email Debug] Sender:', from);
 
   const parentName = booking.parentName || 'Parent';
   const childName = booking.childName || 'Student';

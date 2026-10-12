@@ -1,6 +1,4 @@
 
-import { Resend } from 'resend';
-
 function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;',
@@ -48,31 +46,142 @@ function validateMeetingLink(classLink) {
     '127.0.0.1',
   ]);
 
-  const localHost = ['localhost', '127.0.0.1'].includes(url.hostname);
+  const isLocalHost = ['localhost', '127.0.0.1'].includes(url.hostname);
+
   const validProtocol =
     url.protocol === 'https:' ||
-    (url.protocol === 'http:' && localHost);
+    (url.protocol === 'http:' && isLocalHost);
 
   if (!validProtocol || !allowedHosts.has(url.hostname)) {
     throw new Error('The classroom link host or protocol is not allowed.');
   }
 }
 
-async function sendOneEmail(resend, message, label) {
-  const { data, error } = await resend.emails.send(message);
+/**
+ * Sends one email using the Mailjet Send API v3.1.
+ *
+ * Required environment variables:
+ * MAILJET_API_KEY
+ * MAILJET_SECRET_KEY
+ * EMAIL_FROM
+ */
+async function sendOneEmail(message, label) {
+  const apiKey = process.env.MAILJET_API_KEY;
+  const secretKey = process.env.MAILJET_SECRET_KEY;
 
-  if (error) {
-    console.error(`[Email] ${label} failed:`, error.message);
+  if (!apiKey || !secretKey) {
+    console.error(
+      `[Email] ${label} failed: Mailjet credentials are missing.`
+    );
     return false;
   }
 
-  console.log(`[Email] ${label} accepted by Resend:`, data?.id);
-  return true;
+  const senderMatch = message.from.match(/^(.*?)\s*<([^>]+)>$/);
+
+  const senderName = senderMatch
+    ? senderMatch[1].trim()
+    : 'CodeYoung';
+
+  const senderEmail = senderMatch
+    ? senderMatch[2].trim()
+    : message.from.trim();
+
+  const payload = {
+    Messages: [
+      {
+        From: {
+          Email: senderEmail,
+          Name: senderName,
+        },
+        To: message.to.map((email) => ({
+          Email: email,
+        })),
+        Subject: message.subject,
+        TextPart: message.text,
+        HTMLPart: message.html,
+      },
+    ],
+  };
+
+  try {
+    const response = await fetch('https://api.mailjet.com/v3.1/send', {
+      method: 'POST',
+      headers: {
+        Authorization:
+          'Basic ' +
+          Buffer.from(`${apiKey}:${secretKey}`).toString('base64'),
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const responseText = await response.text();
+
+    let result;
+
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      console.error(
+        `[Email] ${label} failed: Mailjet returned an invalid response.`,
+        `HTTP ${response.status}`
+      );
+      return false;
+    }
+
+    const mailResult = result?.Messages?.[0];
+
+    if (!response.ok || mailResult?.Status !== 'success') {
+      console.error(
+        `[Email] ${label} failed. HTTP status: ${response.status}`,
+        JSON.stringify(result)
+      );
+      return false;
+    }
+
+    const recipientResults = mailResult?.To;
+
+    if (
+      !Array.isArray(recipientResults) ||
+      recipientResults.length !== message.to.length
+    ) {
+      console.error(
+        `[Email] ${label}: Unexpected recipient results.`,
+        JSON.stringify(result)
+      );
+      return false;
+    }
+
+    const failedRecipients = recipientResults.filter(
+      (recipient) => recipient?.Message !== 'success'
+    );
+
+    if (failedRecipients.length > 0) {
+      console.error(
+        `[Email] ${label}: Some recipients were rejected.`,
+        JSON.stringify(failedRecipients)
+      );
+      return false;
+    }
+
+    console.log(`[Email] ${label} accepted by Mailjet.`);
+    return true;
+  } catch (error) {
+    console.error(
+      `[Email] ${label} request failed:`,
+      error.message
+    );
+    return false;
+  }
 }
 
 export async function sendBookingEmails({ booking, mentor }) {
-  if (!process.env.RESEND_API_KEY) {
-    throw new Error('RESEND_API_KEY is not configured.');
+  if (
+    !process.env.MAILJET_API_KEY ||
+    !process.env.MAILJET_SECRET_KEY
+  ) {
+    throw new Error('Mailjet credentials are not configured.');
   }
 
   if (!booking || !mentor) {
@@ -90,9 +199,9 @@ export async function sendBookingEmails({ booking, mentor }) {
   validateMeetingLink(booking.meetingLink);
 
   const from =
-    process.env.EMAIL_FROM || 'CodeYoung <onboarding@resend.dev>';
+    process.env.EMAIL_FROM ||
+    'CodeYoung <paultanmay40@gmail.com>';
 
-  const resend = new Resend(process.env.RESEND_API_KEY);
   console.log('[Email Debug] Parent recipient:', booking.parentEmail);
   console.log('[Email Debug] Mentor recipient:', mentor.email);
   console.log('[Email Debug] Sender:', from);
@@ -101,6 +210,7 @@ export async function sendBookingEmails({ booking, mentor }) {
   const childName = booking.childName || 'Student';
   const mentorName = mentor.name || 'Your assigned mentor';
   const subject = booking.subject || 'Trial Class';
+
   const parentTime = getClassTime(booking, 'parent');
   const mentorTime = getClassTime(booking, 'mentor');
   const classLink = booking.meetingLink;
@@ -109,6 +219,7 @@ export async function sendBookingEmails({ booking, mentor }) {
     from,
     to: [booking.parentEmail],
     subject: 'Your CodeYoung trial class is confirmed!',
+
     text: `Hello ${parentName},
 
 Your CodeYoung trial class has been confirmed.
@@ -125,11 +236,13 @@ Please keep this link private.
 
 Regards,
 CodeYoung Team`,
+
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1f2937;">
         <h2 style="color:#d97706;">Your trial class is confirmed!</h2>
         <p>Hello ${escapeHtml(parentName)},</p>
         <p>Your CodeYoung trial class has been successfully booked.</p>
+
         <div style="background:#f9fafb;padding:18px;border-radius:10px;">
           <p><strong>Student:</strong> ${escapeHtml(childName)}</p>
           <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
@@ -137,7 +250,9 @@ CodeYoung Team`,
           <p><strong>Your local class time:</strong> ${escapeHtml(parentTime)}</p>
           <p><strong>Duration:</strong> 30 minutes</p>
         </div>
+
         ${createJoinButton(classLink)}
+
         <p>Please keep your classroom link private.</p>
         <p>Regards,<br>CodeYoung Team</p>
       </div>
@@ -148,6 +263,7 @@ CodeYoung Team`,
     from,
     to: [mentor.email],
     subject: 'New CodeYoung trial class assigned',
+
     text: `Hello ${mentorName},
 
 A new CodeYoung trial class has been assigned to you.
@@ -164,11 +280,13 @@ Please keep this link private.
 
 Regards,
 CodeYoung Team`,
+
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1f2937;">
         <h2 style="color:#d97706;">New trial class assigned</h2>
         <p>Hello ${escapeHtml(mentorName)},</p>
         <p>A new CodeYoung trial class has been assigned to you.</p>
+
         <div style="background:#f9fafb;padding:18px;border-radius:10px;">
           <p><strong>Student:</strong> ${escapeHtml(childName)}</p>
           <p><strong>Subject:</strong> ${escapeHtml(subject)}</p>
@@ -176,7 +294,9 @@ CodeYoung Team`,
           <p><strong>Mentor local time:</strong> ${escapeHtml(mentorTime)}</p>
           <p><strong>Duration:</strong> 30 minutes</p>
         </div>
+
         ${createJoinButton(classLink)}
+
         <p>Please keep your classroom link private.</p>
         <p>Regards,<br>CodeYoung Team</p>
       </div>
@@ -184,14 +304,17 @@ CodeYoung Team`,
   };
 
   const results = await Promise.allSettled([
-    sendOneEmail(resend, parentMessage, 'Parent email'),
-    sendOneEmail(resend, mentorMessage, 'Mentor email'),
+    sendOneEmail(parentMessage, 'Parent email'),
+    sendOneEmail(mentorMessage, 'Mentor email'),
   ]);
 
   return {
     parentSent:
-      results[0].status === 'fulfilled' && results[0].value === true,
+      results[0].status === 'fulfilled' &&
+      results[0].value === true,
+
     mentorSent:
-      results[1].status === 'fulfilled' && results[1].value === true,
+      results[1].status === 'fulfilled' &&
+      results[1].value === true,
   };
 }

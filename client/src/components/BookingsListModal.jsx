@@ -10,7 +10,7 @@ export default function BookingsListModal({ isOpen, onClose }) {
 
   const fetchBookings = () => {
     setLoading(true);
-    fetch('/api/bookings')
+    fetch('https://codeyoung-trial-booking-2.onrender.com/api/bookings')
       .then((res) => res.json())
       .then((data) => {
         if (data.success) {
@@ -33,7 +33,9 @@ export default function BookingsListModal({ isOpen, onClose }) {
     }
     setResetting(true);
     try {
-      const res = await fetch('/api/reset-seed', { method: 'POST' });
+      const res = await fetch('https://codeyoung-trial-booking-2.onrender.com/api/reset-seed', {
+  method: 'POST'
+});
       const data = await res.json();
       if (data.success) {
         setMessage('Database reset and mentors reseeded successfully!');
